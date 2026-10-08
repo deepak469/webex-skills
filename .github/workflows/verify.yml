@@ -1,0 +1,61 @@
+name: Verify skills
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.detect.outputs.skills }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          skills="$(node scripts/changed-skills.mjs "$BASE_SHA" "$GITHUB_SHA")"
+          echo "Changed skills: $skills"
+          echo "skills=$skills" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: detect
+    if: needs.detect.outputs.skills != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ fromJSON(needs.detect.outputs.skills) }}
+    name: verify (${{ matrix.skill }})
+    env:
+      SKILL: ${{ matrix.skill }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - run: node scripts/validate-skill.mjs "$SKILL"
+      - run: npm test --workspace "skills/$SKILL"
+      - run: node scripts/package-skill.mjs "$SKILL" --dry-run
+
+  # Single stable check name for branch protection, regardless of which skills ran.
+  verified:
+    needs: [detect, verify]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          DETECT: ${{ needs.detect.result }}
+          VERIFY: ${{ needs.verify.result }}
+        run: |
+          echo "detect=$DETECT verify=$VERIFY"
+          [[ "$DETECT" == "success" && ( "$VERIFY" == "success" || "$VERIFY" == "skipped" ) ]]

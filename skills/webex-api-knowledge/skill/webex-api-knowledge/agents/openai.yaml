@@ -1,0 +1,4 @@
+interface:
+  display_name: "Webex API Knowledge"
+  short_description: "Build Webex integrations with grounded API knowledge"
+  default_prompt: "Use $webex-api-knowledge to build this Webex API integration."
