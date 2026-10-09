@@ -150,7 +150,7 @@ test("builds an S256 PKCE authorize URL for the public client", () => {
   );
 
   const url = new URL(buildAuthorizeUrl("state-fixture", challenge));
-  assert.equal(url.origin + url.pathname, "https://idbroker.webex.com/idb/oauth2/v1/authorize");
+  assert.equal(url.origin + url.pathname, "https://idbrokerbts.webex.com/idb/oauth2/v1/authorize");
   assert.deepEqual(Object.fromEntries(url.searchParams), {
     response_type: "code",
     client_id: OAUTH_CLIENT_ID,
@@ -171,11 +171,11 @@ test("routes token requests to the code's cluster idbroker", () => {
   );
   assert.equal(
     tokenUrlFor("ZZZZ"),
-    "https://idbroker.webex.com/idb/oauth2/v1/access_token",
+    "https://idbrokerbts.webex.com/idb/oauth2/v1/access_token",
   );
   assert.equal(
     tokenUrlFor(null),
-    "https://idbroker.webex.com/idb/oauth2/v1/access_token",
+    "https://idbrokerbts.webex.com/idb/oauth2/v1/access_token",
   );
 });
 
