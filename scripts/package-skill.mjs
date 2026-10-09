@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { REPO_ROOT, readPackage, skillDirectory } from "./lib/skills.mjs";
+import { assertChangelog } from "./lib/changelog.mjs";
 
 const [name, ...flags] = process.argv.slice(2);
 const dryRun = flags.includes("--dry-run");
@@ -24,6 +25,7 @@ if (existsSync(join(releaseDirectory, expectedFile))) {
     `${name}@${version} is already released (${expectedFile}). Bump "version" in skills/${name}/package.json.`,
   );
 }
+assertChangelog(name, version);
 
 mkdirSync(releaseDirectory, { recursive: true });
 const args = ["pack", "--json", "--pack-destination", releaseDirectory];

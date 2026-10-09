@@ -45,7 +45,7 @@ jobs:
           node-version: '20'
       - run: node scripts/validate-skill.mjs "$SKILL"
       - run: npm test --workspace "skills/$SKILL"
-      - run: node scripts/package-skill.mjs "$SKILL" --dry-run
+      - run: npm run pack:check --workspace "skills/$SKILL"
 
   # Single stable check name for branch protection, regardless of which skills ran.
   verified:

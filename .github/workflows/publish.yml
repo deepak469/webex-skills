@@ -35,6 +35,8 @@ jobs:
         with:
           node-version: '20'
       - run: node scripts/validate-skill.mjs "$SKILL"
+      - name: Check changelog (stable versions)
+        run: node scripts/changelog.mjs check "$SKILL"
       - run: npm test --workspace "skills/$SKILL"
       - name: Build package
         id: pack
@@ -56,7 +58,11 @@ jobs:
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git add "$FILE" "$LATEST"
           git commit -m "release($SKILL): $VERSION"
-          git push
+          # Stable tags mark the start of the next changelog range.
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            git tag -a "$SKILL@$VERSION" -m "$SKILL $VERSION"
+          fi
+          git push --follow-tags
       - name: Summarize
         env:
           VERSION: ${{ steps.pack.outputs.version }}

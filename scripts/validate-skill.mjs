@@ -24,7 +24,7 @@ export function validateSkill(name) {
   const directory = skillDirectory(name);
   const shippedDirectory = join(directory, "skill", name);
 
-  for (const required of ["README.md", "package.json", join("skill", name, "SKILL.md")]) {
+  for (const required of ["README.md", "package.json", join("skill", name, "SKILL.md"), join("release", "CHANGELOG.md")]) {
     if (!existsSync(join(directory, required))) errors.push(`missing ${required}`);
   }
   if (errors.length) return errors;
@@ -37,6 +37,9 @@ export function validateSkill(name) {
   }
   if (pkg.files?.some((entry) => entry.startsWith("release"))) {
     errors.push('package.json: "files" must not include release/');
+  }
+  for (const script of ["test", "pack:check"]) {
+    if (!pkg.scripts?.[script]) errors.push(`package.json: missing "${script}" script`);
   }
   for (const binPath of Object.values(pkg.bin || {})) {
     if (!existsSync(join(directory, binPath))) errors.push(`package.json: bin target missing: ${binPath}`);

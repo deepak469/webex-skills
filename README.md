@@ -19,8 +19,9 @@ skills/<name>/
   skill/<name>/SKILL.md     the skill as installed into the agent (plus references/, scripts/, agents/)
   scripts/                  skill-specific scripts (e.g. installer)
   tests/                    skill tests (`npm test`)
-  release/                  released packages, one .tgz per version
-scripts/                    shared repo tooling (validate, detect changes, package)
+  release/                  CHANGELOG.md and released packages, one .tgz per version
+scripts/                    shared repo tooling (validate, detect changes, changelog, package)
+.agents/skills/             project-level agent skills for working on this repo (e.g. skill-changelog)
 .github/workflows/          CI verification and release packaging
 ```
 
@@ -43,12 +44,20 @@ node scripts/package-skill.mjs <name> --dry-run   # preview a package
 
 ## Releasing a skill
 
-1. Bump `version` in `skills/<name>/package.json` and merge to the default branch.
-2. Run **Actions > Package skill release**, pick the skill, and optionally choose dry run.
-3. The workflow validates, tests, packs `skills/<name>/release/<package>-<version>.tgz`, and commits it to the default branch. Existing versions are never overwritten.
+Versions are `X.Y.Z` (stable) or `X.Y.Z-beta.N` (pre-release). Stable releases require a changelog entry; pre-releases do not.
+
+**Stable release**
+
+1. Locally, ask your agent to use the project skill **skill-changelog** (e.g. "use skill-changelog to prepare the webex-api-knowledge 1.0.0 changelog"). It collects commits since the last stable tag, drafts the entry for your review, bumps `version` if needed, pushes a `changelog/<name>-<version>` branch, and opens a PR.
+2. Review, edit if needed, and merge the PR.
+3. Run **Actions > Package skill release** and pick the skill. The workflow fails if the stable version has no entry in `skills/<name>/release/CHANGELOG.md`.
+
+**Pre-release**: bump `version` to `X.Y.Z-beta.N`, merge, and run **Package skill release**.
+
+The workflow validates, tests, packs `skills/<name>/release/<package>-<version>.tgz` and `<package>-latest.tgz`, and commits them to the default branch. Stable releases are also tagged `<name>@<version>`; these tags mark where the next changelog starts. Existing versions are never overwritten. The changelog is not shipped inside the package.
 
 ## Adding a skill
 
-1. Create `skills/<name>/` following the layout above; the folder name must equal the `name` in `SKILL.md`.
+1. Create `skills/<name>/` following the layout above, including `release/CHANGELOG.md`; the folder name must equal the `name` in `SKILL.md`.
 2. Add `<name>` to the `skill` options in [.github/workflows/publish.yml](.github/workflows/publish.yml).
 3. Add a row to the table above and run `npm run validate`.
