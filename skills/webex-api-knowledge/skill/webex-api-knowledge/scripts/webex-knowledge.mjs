@@ -1,15 +1,9 @@
 #!/usr/bin/env node
 
-import {
-  createDecipheriv,
-  createHash,
-  createPublicKey,
-  diffieHellman,
-  generateKeyPairSync,
-  hkdfSync,
-} from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { homedir, platform, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -19,7 +13,28 @@ export const SERVICE_URL =
 const API_PREFIX = "/webex-developer-ai-assistant/api/v1";
 const TOKEN_SKEW_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 20_000;
-const X25519_SPKI_PREFIX = Buffer.from("302a300506032b656e032100", "hex");
+
+// Public client: PKCE secures the flow, so there is no client secret.
+export const OAUTH_CLIENT_ID =
+  "C876332f0f6d5a0a384b9d015ae2696dbfc18cad4a9d1696557d8291a365e94fa";
+export const OAUTH_SCOPES = "identity:people_read spark:mcp";
+export const CALLBACK_PORT = 17177;
+export const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}/callback`;
+const DEFAULT_IDBROKER_URL = "https://idbrokerbts.webex.com";
+const AUTHORIZE_URL = `${DEFAULT_IDBROKER_URL}/idb/oauth2/v1/authorize`;
+const LOGIN_TIMEOUT_MS = 300_000;
+const CLUSTER_IDBROKER = new Map([
+  ["PF84", "https://idbroker.webex.com"],
+  ["PA71", "https://idbroker-ae.webex.com"],
+  ["PA61", "https://idbroker-au.webex.com"],
+  ["PC75", "https://idbroker-ca.webex.com"],
+  ["PS65", "https://idbroker-sg.webex.com"],
+  ["P0A1", "https://idbroker-b-us.webex.com"],
+  ["PI91", "https://idbroker-in.webex.com"],
+  ["PE93", "https://idbroker-eu.webex.com"],
+  ["PU39", "https://idbroker-oh.webex.com"],
+  ["A52D", "https://idbrokerbts.webex.com"],
+]);
 
 class SafeError extends Error {
   constructor(message, { status = null, code = null } = {}) {
@@ -27,21 +42,6 @@ class SafeError extends Error {
     this.name = "SafeError";
     this.status = status;
     this.code = code;
-  }
-}
-
-function base64urlEncode(value) {
-  return Buffer.from(value).toString("base64url");
-}
-
-function base64urlDecode(value, field) {
-  if (typeof value !== "string" || !value) {
-    throw new SafeError(`Token envelope field ${field} is missing`);
-  }
-  try {
-    return Buffer.from(value, "base64url");
-  } catch {
-    throw new SafeError(`Token envelope field ${field} is invalid`);
   }
 }
 
@@ -71,15 +71,15 @@ export function resolveServiceUrl() {
 }
 
 export function classifyRequestFailure(
-  serviceUrl,
+  url,
   error,
   env = process.env,
 ) {
+  const host = new URL(url).host;
   if (
     env.CODEX_SANDBOX_NETWORK_DISABLED === "1"
     && error?.name !== "TimeoutError"
   ) {
-    const host = new URL(serviceUrl).host;
     return new SafeError(
       `Codex network permission is required to connect to ${host}. `
         + "Use the shell execution tool's sandbox/network escalation to request "
@@ -90,7 +90,7 @@ export function classifyRequestFailure(
   const reason = error?.name === "TimeoutError"
     ? "timed out"
     : "could not be reached";
-  return new SafeError(`Knowledge service ${reason}`, {
+  return new SafeError(`Webex service ${host} ${reason}`, {
     code: "service_unavailable",
   });
 }
@@ -345,7 +345,12 @@ async function deleteSecret(serviceUrl) {
 }
 
 function validateTokenRecord(value, serviceUrl) {
-  if (!value || typeof value !== "object" || value.service_url !== serviceUrl) {
+  if (
+    !value
+    || typeof value !== "object"
+    || value.service_url !== serviceUrl
+    || value.client_id !== OAUTH_CLIENT_ID
+  ) {
     return null;
   }
   if (
@@ -374,7 +379,12 @@ async function saveTokenRecord(serviceUrl, record) {
   await saveSecret(serviceUrl, JSON.stringify(record));
 }
 
-function normalizeTokenResponse(payload, serviceUrl, previous = null) {
+function normalizeTokenResponse(
+  payload,
+  serviceUrl,
+  previous = null,
+  clusterId = null,
+) {
   if (!payload || typeof payload !== "object") {
     throw new SafeError("Webex token response is invalid");
   }
@@ -402,8 +412,10 @@ function normalizeTokenResponse(payload, serviceUrl, previous = null) {
       ? null
       : previous?.refresh_token_expires_at ?? null;
   return {
-    version: 1,
+    version: 2,
     service_url: serviceUrl,
+    client_id: OAUTH_CLIENT_ID,
+    cluster_id: clusterId ?? previous?.cluster_id ?? null,
     access_token: payload.access_token,
     refresh_token: refreshToken,
     token_type: typeof payload.token_type === "string"
@@ -417,75 +429,165 @@ function normalizeTokenResponse(payload, serviceUrl, previous = null) {
   };
 }
 
-export function decryptTokenEnvelope(sessionId, privateKey, envelope) {
-  if (
-    !envelope
-    || envelope.algorithm !== "X25519-HKDF-SHA256-AESGCM"
-  ) {
-    throw new SafeError("Unsupported token envelope algorithm");
-  }
-  const serverRaw = base64urlDecode(
-    envelope.server_public_key,
-    "server_public_key",
-  );
-  const salt = base64urlDecode(envelope.salt, "salt");
-  const nonce = base64urlDecode(envelope.nonce, "nonce");
-  const encrypted = base64urlDecode(envelope.ciphertext, "ciphertext");
-  if (
-    serverRaw.length !== 32
-    || nonce.length !== 12
-    || encrypted.length <= 16
-  ) {
-    throw new SafeError(
-      "Token envelope has invalid key, nonce, or ciphertext length",
-    );
-  }
-  const serverPublicKey = createPublicKey({
-    key: Buffer.concat([X25519_SPKI_PREFIX, serverRaw]),
-    format: "der",
-    type: "spki",
-  });
-  const sharedSecret = diffieHellman({
-    privateKey,
-    publicKey: serverPublicKey,
-  });
-  const key = Buffer.from(hkdfSync(
-    "sha256",
-    sharedSecret,
-    salt,
-    Buffer.from(`webex-knowledge-oauth:${sessionId}`),
-    32,
-  ));
-  const tag = encrypted.subarray(encrypted.length - 16);
-  const ciphertext = encrypted.subarray(0, encrypted.length - 16);
-  const decipher = createDecipheriv("aes-256-gcm", key, nonce);
-  decipher.setAAD(Buffer.from(sessionId));
-  decipher.setAuthTag(tag);
-  try {
-    const plaintext = Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final(),
-    ]);
-    return JSON.parse(plaintext.toString("utf8"));
-  } catch {
-    throw new SafeError("Token envelope authentication failed");
-  }
+export function generatePKCE() {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  return { verifier, challenge };
 }
 
-function createClientKeyPair() {
-  const { publicKey, privateKey } = generateKeyPairSync("x25519");
-  const spki = Buffer.from(publicKey.export({ format: "der", type: "spki" }));
-  const expectedLength = X25519_SPKI_PREFIX.length + 32;
-  if (
-    spki.length !== expectedLength
-    || !spki.subarray(0, X25519_SPKI_PREFIX.length).equals(X25519_SPKI_PREFIX)
-  ) {
-    throw new SafeError("Unable to export the ephemeral X25519 public key");
+export function generateState() {
+  return randomBytes(16).toString("hex");
+}
+
+export function buildAuthorizeUrl(state, codeChallenge) {
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: OAUTH_CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    scope: OAUTH_SCOPES,
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+  });
+  return `${AUTHORIZE_URL}?${params.toString()}`;
+}
+
+// Webex auth codes look like `<base64>_<CLUSTER>_<orgId>`.
+export function extractClusterId(code) {
+  const match = /^[^_]+_([A-Z0-9]{4})_/.exec(code);
+  return match ? match[1] : null;
+}
+
+export function tokenUrlFor(clusterId) {
+  const base = CLUSTER_IDBROKER.get(clusterId) ?? DEFAULT_IDBROKER_URL;
+  return `${base}/idb/oauth2/v1/access_token`;
+}
+
+export async function requestToken(form, clusterId) {
+  const url = tokenUrlFor(clusterId);
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams(form).toString(),
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw classifyRequestFailure(url, error);
   }
-  return {
-    privateKey,
-    publicKeyRaw: spki.subarray(X25519_SPKI_PREFIX.length),
-  };
+  let payload = null;
+  try {
+    payload = JSON.parse(await response.text());
+  } catch {
+    payload = null;
+  }
+  if (!response.ok) {
+    const oauthError = typeof payload?.error === "string"
+      && /^[a-z_]{1,64}$/.test(payload.error)
+      ? `: ${payload.error}`
+      : "";
+    throw new SafeError(
+      `Webex token request failed (HTTP ${response.status}${oauthError})`,
+      { status: response.status, code: "oauth_error" },
+    );
+  }
+  if (!payload || typeof payload !== "object") {
+    throw new SafeError("Webex token response is invalid");
+  }
+  return payload;
+}
+
+const PAGE_STYLE = "font-family:system-ui;text-align:center;margin-top:20vh";
+const SUCCESS_HTML = `<!DOCTYPE html><html><head><title>Webex login complete</title></head><body style="${PAGE_STYLE}"><h1>Login successful</h1><p>You can close this tab and return to your agent.</p></body></html>`;
+const FAILURE_HTML = `<!DOCTYPE html><html><head><title>Webex login failed</title></head><body style="${PAGE_STYLE}"><h1>Login failed</h1><p>Return to your agent and try again.</p></body></html>`;
+
+function stateMatches(expected, received) {
+  if (typeof received !== "string") return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(received);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+// Resolves once listening; `code` settles when the browser hits the callback.
+export async function startCallbackServer(
+  expectedState,
+  { port = CALLBACK_PORT, timeoutMs = LOGIN_TIMEOUT_MS } = {},
+) {
+  let resolveCode;
+  let rejectCode;
+  const code = new Promise((resolvePromise, rejectPromise) => {
+    resolveCode = resolvePromise;
+    rejectCode = rejectPromise;
+  });
+  let settled = false;
+  let timer = null;
+
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", "http://localhost");
+    if (url.pathname !== "/callback") {
+      res.writeHead(404).end();
+      return;
+    }
+    if (req.method !== "GET") {
+      res.writeHead(405, { Allow: "GET" }).end();
+      return;
+    }
+    const headers = {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      Connection: "close",
+    };
+    const error = url.searchParams.get("error");
+    const received = url.searchParams.get("code");
+    let failure = null;
+    if (error) {
+      failure = /^[a-z_]{1,64}$/.test(error)
+        ? `Webex authorization failed: ${error}`
+        : "Webex authorization failed";
+    } else if (!stateMatches(expectedState, url.searchParams.get("state"))) {
+      failure = "Webex authorization state mismatch";
+    } else if (!received) {
+      failure = "Webex authorization returned no code";
+    }
+    res.writeHead(200, headers);
+    res.end(failure ? FAILURE_HTML : SUCCESS_HTML, () => {
+      finish(failure ? new SafeError(failure) : null, received);
+    });
+  });
+
+  function finish(error, value) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    server.close();
+    server.closeAllConnections();
+    if (error) rejectCode(error);
+    else resolveCode(value);
+  }
+
+  await new Promise((resolvePromise, rejectPromise) => {
+    server.once("error", (error) => {
+      rejectPromise(new SafeError(
+        error?.code === "EADDRINUSE"
+          ? `Port ${port} is already in use; close the other process and try again`
+          : "Failed to start the local login callback server",
+      ));
+    });
+    server.listen(port, "127.0.0.1", resolvePromise);
+  });
+  timer = setTimeout(() => {
+    finish(new SafeError("Webex login timed out; run auth to try again"));
+  }, timeoutMs);
+  return { port: server.address().port, code };
+}
+
+export function shouldSuppressBrowser(env = process.env) {
+  return Boolean(env.WEBEX_NO_BROWSER || env.GIT_DIR || env.CI);
 }
 
 async function openBrowser(url) {
@@ -501,88 +603,68 @@ async function openBrowser(url) {
     command = "xdg-open";
     args = [url];
   }
-  const result = await runProcess(command, args, { allowFailure: true });
-  return result.code === 0;
+  try {
+    const result = await runProcess(command, args, { allowFailure: true });
+    return result.code === 0;
+  } catch {
+    return false;
+  }
 }
 
-function sleep(milliseconds) {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+// Fails fast (e.g. sandboxed network) before the user is sent to the browser.
+async function checkIdbrokerReachable() {
+  try {
+    await fetch(DEFAULT_IDBROKER_URL, {
+      method: "HEAD",
+      redirect: "manual",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw classifyRequestFailure(DEFAULT_IDBROKER_URL, error);
+  }
 }
 
 async function authenticate(serviceUrl) {
-  const { privateKey, publicKeyRaw } = createClientKeyPair();
-  const { payload: session } = await requestJson(
-    serviceUrl,
-    `${API_PREFIX}/auth/webex/sessions`,
-    {
-      method: "POST",
-      body: { client_public_key: base64urlEncode(publicKeyRaw) },
-    },
-  );
-  if (
-    !session
-    || typeof session.session_id !== "string"
-    || typeof session.poll_token !== "string"
-    || typeof session.authorization_url !== "string"
-  ) {
-    throw new SafeError("OAuth session response is incomplete");
-  }
+  await checkIdbrokerReachable();
+  const { verifier, challenge } = generatePKCE();
+  const state = generateState();
+  const callback = await startCallbackServer(state);
+  const authorizeUrl = buildAuthorizeUrl(state, challenge);
 
   process.stderr.write(
-    `Webex authorization is required. Complete login at:\n${session.authorization_url}\n`,
+    `Webex authorization is required. Complete login at:\n${authorizeUrl}\n`,
   );
-  if (!await openBrowser(session.authorization_url)) {
+  if (shouldSuppressBrowser() || !await openBrowser(authorizeUrl)) {
     process.stderr.write(
-      "The browser could not be opened automatically; open the URL above manually.\n",
+      "The browser was not opened automatically; open the URL above manually.\n",
     );
   }
 
-  const lifetimeSeconds = Math.max(1, Number(session.expires_in) || 600);
-  const deadline = Date.now() + lifetimeSeconds * 1000;
-  let intervalMs = Math.max(1, Number(session.poll_interval) || 2) * 1000;
-  while (Date.now() < deadline) {
-    await sleep(intervalMs);
-    const pickup = await requestJson(
-      serviceUrl,
-      `${API_PREFIX}/auth/webex/sessions/${encodeURIComponent(session.session_id)}/token`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.poll_token}` },
-      },
-    );
-    if (pickup.status === 202) {
-      const retryAfter = Number(
-        pickup.payload?.retry_after || pickup.headers.get("retry-after") || 2,
-      );
-      intervalMs = Math.max(1, retryAfter) * 1000;
-      continue;
-    }
-    const payload = pickup.payload;
-    if (!payload || payload.status !== "ready" || !payload.token_envelope) {
-      throw new SafeError("OAuth token pickup response is invalid");
-    }
-    const tokens = decryptTokenEnvelope(
-      session.session_id,
-      privateKey,
-      payload.token_envelope,
-    );
-    const record = normalizeTokenResponse(tokens, serviceUrl);
-    await saveTokenRecord(serviceUrl, record);
-    return record;
-  }
-  throw new SafeError(
-    "Webex authorization session expired before login completed",
+  const code = await callback.code;
+  const clusterId = extractClusterId(code);
+  const tokens = await requestToken(
+    {
+      grant_type: "authorization_code",
+      client_id: OAUTH_CLIENT_ID,
+      code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier,
+    },
+    clusterId,
   );
+  const record = normalizeTokenResponse(tokens, serviceUrl, null, clusterId);
+  await saveTokenRecord(serviceUrl, record);
+  return record;
 }
 
 async function refreshTokens(serviceUrl, previous) {
-  const { payload } = await requestJson(
-    serviceUrl,
-    `${API_PREFIX}/auth/webex/token/refresh`,
+  const payload = await requestToken(
     {
-      method: "POST",
-      body: { refresh_token: previous.refresh_token },
+      grant_type: "refresh_token",
+      client_id: OAUTH_CLIENT_ID,
+      refresh_token: previous.refresh_token,
     },
+    previous.cluster_id,
   );
   const record = normalizeTokenResponse(payload, serviceUrl, previous);
   await saveTokenRecord(serviceUrl, record);
@@ -616,7 +698,12 @@ async function ensureTokens(
     try {
       return await refreshTokens(serviceUrl, record);
     } catch (error) {
-      if (!(error instanceof SafeError) || error.status !== 401) throw error;
+      if (
+        !(error instanceof SafeError)
+        || (error.status !== 400 && error.status !== 401)
+      ) {
+        throw error;
+      }
     }
   }
   return authenticate(serviceUrl);

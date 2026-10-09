@@ -1,6 +1,6 @@
 # Webex API Knowledge Skill
 
-Give Codex, GitHub Copilot in VS Code, or Claude Code grounded Webex Public API knowledge while building integrations. The skill runs a local Node.js helper that signs the developer in through Webex, stores the resulting token pair in macOS Keychain or Windows DPAPI-encrypted local storage, and queries the Webex Developer AI Assistant knowledge service. The OAuth client secret stays on that service; it is not part of this repository or package.
+Give Codex, GitHub Copilot in VS Code, or Claude Code grounded Webex Public API knowledge while building integrations. The skill runs a local Node.js helper that signs the developer in to Webex as a public OAuth client using PKCE (callback on `http://localhost:17177/callback`), stores the resulting token pair in macOS Keychain or Windows DPAPI-encrypted local storage, and queries the Webex Developer AI Assistant knowledge service. No client secret is used or shipped.
 
 The current fixed service origin is the integration deployment. This package is for pilot testing until the production service is approved.
 
@@ -8,7 +8,8 @@ The current fixed service origin is the integration deployment. This package is 
 
 - Node.js 20 or newer
 - macOS or Windows for secure token storage
-- Network access to the configured Webex knowledge service
+- Network access to the configured Webex knowledge service and `idbroker*.webex.com`
+- Local port 17177 free during login
 
 ## Install
 

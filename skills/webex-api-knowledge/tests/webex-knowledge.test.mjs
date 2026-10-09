@@ -1,63 +1,36 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import {
-  createCipheriv,
-  diffieHellman,
-  generateKeyPairSync,
-  hkdfSync,
-  randomBytes,
-} from "node:crypto";
 import test from "node:test";
 
 import {
+  OAUTH_CLIENT_ID,
+  REDIRECT_URI,
   SERVICE_URL,
+  buildAuthorizeUrl,
   classifyRequestFailure,
-  decryptTokenEnvelope,
+  extractClusterId,
+  generatePKCE,
   macOSKeychainSaveArgs,
   main,
+  requestToken,
   resolveServiceUrl,
+  shouldSuppressBrowser,
+  startCallbackServer,
+  tokenUrlFor,
   validateSearchRequest,
 } from "../skill/webex-api-knowledge/scripts/webex-knowledge.mjs";
 import { installationTargets, parseArguments } from "../scripts/install-skill.mjs";
 
-const X25519_SPKI_PREFIX = Buffer.from("302a300506032b656e032100", "hex");
-
-function rawPublicKey(publicKey) {
-  const spki = Buffer.from(publicKey.export({ format: "der", type: "spki" }));
-  assert.deepEqual(spki.subarray(0, X25519_SPKI_PREFIX.length), X25519_SPKI_PREFIX);
-  return spki.subarray(X25519_SPKI_PREFIX.length);
-}
-
-function encryptedFixture(sessionId, clientPublicKey, tokens) {
-  const server = generateKeyPairSync("x25519");
-  const sharedSecret = diffieHellman({
-    privateKey: server.privateKey,
-    publicKey: clientPublicKey,
-  });
-  const salt = randomBytes(16);
-  const nonce = randomBytes(12);
-  const key = Buffer.from(hkdfSync(
-    "sha256",
-    sharedSecret,
-    salt,
-    Buffer.from(`webex-knowledge-oauth:${sessionId}`),
-    32,
-  ));
-  const cipher = createCipheriv("aes-256-gcm", key, nonce);
-  cipher.setAAD(Buffer.from(sessionId));
-  const encrypted = Buffer.concat([
-    cipher.update(JSON.stringify(tokens)),
-    cipher.final(),
-  ]);
-  const ciphertext = Buffer.concat([encrypted, cipher.getAuthTag()]);
-  return {
-    algorithm: "X25519-HKDF-SHA256-AESGCM",
-    server_public_key: rawPublicKey(server.publicKey).toString("base64url"),
-    salt: salt.toString("base64url"),
-    nonce: nonce.toString("base64url"),
-    ciphertext: ciphertext.toString("base64url"),
-  };
+async function withFetch(stub, run) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = stub;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 test("uses only the fixed integration origin", () => {
@@ -168,31 +141,108 @@ test("rejects duplicate and oversized search requests", () => {
   );
 });
 
-test("decrypts the server-compatible token envelope", () => {
-  const client = generateKeyPairSync("x25519");
-  const sessionId = "f37f1472-56b2-4ee7-bddb-5fb22c7fc91e";
-  const tokens = {
-    access_token: "access-token-fixture",
-    refresh_token: "refresh-token-fixture",
-    token_type: "Bearer",
-    expires_in: 3600,
-    scope: "spark:mcp identity:people_read",
-  };
-  const envelope = encryptedFixture(sessionId, client.publicKey, tokens);
-
-  assert.deepEqual(
-    decryptTokenEnvelope(sessionId, client.privateKey, envelope),
-    tokens,
+test("builds an S256 PKCE authorize URL for the public client", () => {
+  const { verifier, challenge } = generatePKCE();
+  assert.match(verifier, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(
+    challenge,
+    createHash("sha256").update(verifier).digest("base64url"),
   );
 
-  const tampered = {
-    ...envelope,
-    ciphertext: `${envelope.ciphertext.slice(0, -2)}AA`,
-  };
-  assert.throws(
-    () => decryptTokenEnvelope(sessionId, client.privateKey, tampered),
-    /authentication failed/,
+  const url = new URL(buildAuthorizeUrl("state-fixture", challenge));
+  assert.equal(url.origin + url.pathname, "https://idbroker.webex.com/idb/oauth2/v1/authorize");
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    response_type: "code",
+    client_id: OAUTH_CLIENT_ID,
+    redirect_uri: "http://localhost:17177/callback",
+    scope: "identity:people_read spark:mcp",
+    state: "state-fixture",
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+  });
+});
+
+test("routes token requests to the code's cluster idbroker", () => {
+  assert.equal(extractClusterId("YWJj_PE93_org-id"), "PE93");
+  assert.equal(extractClusterId("no-cluster"), null);
+  assert.equal(
+    tokenUrlFor("PE93"),
+    "https://idbroker-eu.webex.com/idb/oauth2/v1/access_token",
   );
+  assert.equal(
+    tokenUrlFor("ZZZZ"),
+    "https://idbroker.webex.com/idb/oauth2/v1/access_token",
+  );
+  assert.equal(
+    tokenUrlFor(null),
+    "https://idbroker.webex.com/idb/oauth2/v1/access_token",
+  );
+});
+
+test("exchanges the code without a client secret", async () => {
+  let captured;
+  const tokens = await withFetch(async (url, init) => {
+    captured = { url, init };
+    return new Response(JSON.stringify({ access_token: "a", expires_in: 1 }));
+  }, () => requestToken(
+    {
+      grant_type: "authorization_code",
+      client_id: OAUTH_CLIENT_ID,
+      code: "YWJj_PE93_org",
+      redirect_uri: REDIRECT_URI,
+      code_verifier: "verifier",
+    },
+    "PE93",
+  ));
+  assert.equal(tokens.access_token, "a");
+  assert.equal(
+    captured.url,
+    "https://idbroker-eu.webex.com/idb/oauth2/v1/access_token",
+  );
+  const form = new URLSearchParams(captured.init.body);
+  assert.equal(form.get("code_verifier"), "verifier");
+  assert.equal(form.has("client_secret"), false);
+});
+
+test("reports OAuth errors without echoing the response body", async () => {
+  await withFetch(
+    async () => new Response(
+      JSON.stringify({ error: "invalid_grant", error_description: "secret-ish detail" }),
+      { status: 400 },
+    ),
+    () => assert.rejects(
+      () => requestToken({ grant_type: "refresh_token" }, null),
+      (error) => error.status === 400
+        && /invalid_grant/.test(error.message)
+        && !/secret-ish/.test(error.message),
+    ),
+  );
+});
+
+test("callback server accepts only the expected state", async () => {
+  const ok = await startCallbackServer("expected", { port: 0 });
+  const okResponse = await fetch(
+    `http://127.0.0.1:${ok.port}/callback?code=the-code&state=expected`,
+  );
+  assert.equal(okResponse.status, 200);
+  assert.equal(await ok.code, "the-code");
+
+  const bad = await startCallbackServer("expected", { port: 0 });
+  const rejected = assert.rejects(bad.code, /state mismatch/);
+  await fetch(`http://127.0.0.1:${bad.port}/callback?code=x&state=other`);
+  await rejected;
+
+  const denied = await startCallbackServer("expected", { port: 0 });
+  const deniedResult = assert.rejects(denied.code, /access_denied/);
+  await fetch(`http://127.0.0.1:${denied.port}/callback?error=access_denied`);
+  await deniedResult;
+});
+
+test("suppresses the browser in non-interactive contexts", () => {
+  assert.equal(shouldSuppressBrowser({}), false);
+  assert.equal(shouldSuppressBrowser({ CI: "true" }), true);
+  assert.equal(shouldSuppressBrowser({ GIT_DIR: ".git" }), true);
+  assert.equal(shouldSuppressBrowser({ WEBEX_NO_BROWSER: "1" }), true);
 });
 
 test("shares the project installation between Codex and Copilot", () => {

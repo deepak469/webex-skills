@@ -1,6 +1,6 @@
 {
   "name": "@webex-skills/api-knowledge",
-  "version": "0.2.0-beta.0",
+  "version": "0.2.0-beta.1",
   "description": "Installer bundle for the Webex API Knowledge skill.",
   "type": "module",
   "private": true,

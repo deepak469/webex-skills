@@ -56,13 +56,13 @@ Response:
 
 ## Authentication helper
 
-The helper implements these endpoints without exposing tokens to the agent:
+The helper signs in directly with Webex as a public OAuth client using Authorization Code with PKCE (S256); there is no client secret.
 
-- `POST /webex-developer-ai-assistant/api/v1/auth/webex/sessions`
-- `POST /webex-developer-ai-assistant/api/v1/auth/webex/sessions/{session_id}/token`
-- `POST /webex-developer-ai-assistant/api/v1/auth/webex/token/refresh`
+- Authorize: `https://idbroker.webex.com/idb/oauth2/v1/authorize` with scopes `identity:people_read spark:mcp`.
+- Callback: `http://localhost:17177/callback`, served by a short-lived listener bound to `127.0.0.1` that validates `state` and closes after one callback or 5 minutes.
+- Token exchange and refresh: `POST /idb/oauth2/v1/access_token` on the idbroker for the cluster encoded in the authorization code.
 
-The browser login handoff uses `X25519-HKDF-SHA256-AESGCM`. The ephemeral client private key stays in helper memory. Tokens are stored in macOS Keychain or encrypted with Windows DPAPI for the current user.
+The knowledge service accepts the resulting Webex access token as a bearer token. Tokens are stored in macOS Keychain or encrypted with Windows DPAPI for the current user and are never printed.
 
 ## Failure handling
 
