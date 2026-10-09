@@ -14,7 +14,7 @@ const SCOPES = new Set(["project", "user"]);
 
 function usage() {
   return [
-    "Usage: webex-api-knowledge-skill install",
+    "Usage: webex-api-knowledge install",
     "       --client <codex|copilot|claude|all>",
     "       --scope <project|user> [--force]",
     "",

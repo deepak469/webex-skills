@@ -12,8 +12,8 @@ User-level installation, available across projects:
 
 ```bash
 npx --yes \
-  --package https://raw.githubusercontent.com/webex/webex-skills/main/skills/webex-api-knowledge/release/webex-skills-api-knowledge-latest.tgz \
-  webex-api-knowledge-skill install \
+  --package https://raw.githubusercontent.com/webex/webex-skills/main/skills/webex-api-knowledge/release/webex-api-knowledge-latest.tgz \
+  webex-api-knowledge install \
   --client all \
   --scope user
 ```
@@ -24,8 +24,8 @@ Project-level installation, run from the target project:
 cd /path/to/project
 
 npx --yes \
-  --package https://raw.githubusercontent.com/webex/webex-skills/main/skills/webex-api-knowledge/release/webex-skills-api-knowledge-latest.tgz \
-  webex-api-knowledge-skill install \
+  --package https://raw.githubusercontent.com/webex/webex-skills/main/skills/webex-api-knowledge/release/webex-api-knowledge-latest.tgz \
+  webex-api-knowledge install \
   --client all \
   --scope project
 ```

@@ -30,7 +30,12 @@ export function validateSkill(name) {
   if (errors.length) return errors;
 
   const pkg = readPackage(name);
-  if (!pkg.name) errors.push("package.json: missing name");
+  // Keeps `release/<name>-latest.tgz` and the `npx ... <name> install` command derivable from the skill name.
+  if (pkg.name !== name) errors.push(`package.json: name "${pkg.name}" must equal folder "${name}"`);
+  const binNames = Object.keys(pkg.bin || {});
+  if (binNames.length !== 1 || binNames[0] !== name) {
+    errors.push(`package.json: "bin" must define exactly one command named "${name}"`);
+  }
   if (!SEMVER.test(pkg.version || "")) errors.push(`package.json: invalid version "${pkg.version}"`);
   if (!Array.isArray(pkg.files) || !pkg.files.includes(`skill/${name}/`)) {
     errors.push(`package.json: "files" must include "skill/${name}/"`);

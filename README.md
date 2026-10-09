@@ -54,7 +54,7 @@ Versions are `X.Y.Z` (stable) or `X.Y.Z-beta.N` (pre-release). Stable releases r
 
 **Pre-release**: bump `version` to `X.Y.Z-beta.N`, merge, and run **Package skill release**.
 
-The workflow validates, tests, packs `skills/<name>/release/<package>-<version>.tgz` and `<package>-latest.tgz`, and commits them to the default branch. Stable releases are also tagged `<name>@<version>`; these tags mark where the next changelog starts. Existing versions are never overwritten. The changelog is not shipped inside the package.
+The workflow validates, tests, packs `skills/<name>/release/<name>-<version>.tgz` and `<name>-latest.tgz`, and commits them to the default branch. Stable releases are also tagged `<name>@<version>`; these tags mark where the next changelog starts. Existing versions are never overwritten. The changelog is not shipped inside the package.
 
 ## Adding a skill
 

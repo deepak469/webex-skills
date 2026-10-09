@@ -1,11 +1,11 @@
 {
-  "name": "@webex-skills/api-knowledge",
-  "version": "0.2.0-beta.1",
+  "name": "webex-api-knowledge",
+  "version": "0.2.0-beta.2",
   "description": "Installer bundle for the Webex API Knowledge skill.",
   "type": "module",
   "private": true,
   "bin": {
-    "webex-api-knowledge-skill": "scripts/install-skill.mjs"
+    "webex-api-knowledge": "scripts/install-skill.mjs"
   },
   "files": [
     "skill/webex-api-knowledge/",
