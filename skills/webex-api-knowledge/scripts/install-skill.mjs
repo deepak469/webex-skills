@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { access, cp, mkdir } from "node:fs/promises";
-import { realpathSync } from "node:fs";
+import { access, cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,9 @@ import { fileURLToPath } from "node:url";
 const SKILL_NAME = "webex-api-knowledge";
 const SCRIPT_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const SKILL_DIRECTORY = resolve(SCRIPT_DIRECTORY, "..", "skill", SKILL_NAME);
+const { version: VERSION } = JSON.parse(
+  readFileSync(resolve(SCRIPT_DIRECTORY, "..", "package.json"), "utf8"),
+);
 const CLIENTS = new Set(["codex", "copilot", "claude", "all"]);
 const SCOPES = new Set(["project", "user"]);
 
@@ -80,6 +83,26 @@ async function pathExists(path) {
   }
 }
 
+// Sets `metadata.version` in SKILL.md frontmatter, replacing any existing value.
+export function stampVersion(markdown, version) {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown);
+  if (!match) throw new Error("SKILL.md is missing YAML frontmatter");
+  const lines = match[1].split(/\r?\n/);
+  const versionLine = `  version: ${JSON.stringify(version)}`;
+  const metadataIndex = lines.findIndex((line) => /^metadata:\s*$/.test(line));
+  if (metadataIndex === -1) {
+    lines.push("metadata:", versionLine);
+  } else {
+    let end = metadataIndex + 1;
+    while (end < lines.length && /^\s+\S/.test(lines[end])) end += 1;
+    const block = lines
+      .slice(metadataIndex + 1, end)
+      .filter((line) => !/^\s+version:/.test(line));
+    lines.splice(metadataIndex + 1, end - metadataIndex - 1, versionLine, ...block);
+  }
+  return `---\n${lines.join("\n")}\n---${markdown.slice(match[0].length)}`;
+}
+
 export async function install({ client, scope, force = false }) {
   const results = [];
   for (const target of installationTargets(client, scope)) {
@@ -98,6 +121,8 @@ export async function install({ client, scope, force = false }) {
       force,
       errorOnExist: !force,
     });
+    const skillFile = join(target, "SKILL.md");
+    await writeFile(skillFile, stampVersion(await readFile(skillFile, "utf8"), VERSION));
     results.push({ target, status: "installed" });
   }
   return results;
@@ -110,7 +135,7 @@ async function main() {
     return;
   }
   const results = await install(options);
-  process.stdout.write(`${JSON.stringify({ skill: SKILL_NAME, results }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ skill: SKILL_NAME, version: VERSION, results }, null, 2)}\n`);
 }
 
 const invokedPath = process.argv[1]

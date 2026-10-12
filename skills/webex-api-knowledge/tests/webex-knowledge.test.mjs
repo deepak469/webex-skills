@@ -23,7 +23,7 @@ import {
   validateSearchRequest,
   validateServiceUrl,
 } from "../skill/webex-api-knowledge/scripts/webex-knowledge.mjs";
-import { installationTargets, parseArguments } from "../scripts/install-skill.mjs";
+import { installationTargets, parseArguments, stampVersion } from "../scripts/install-skill.mjs";
 
 async function withFetch(stub, run) {
   const originalFetch = globalThis.fetch;
@@ -300,6 +300,18 @@ test("suppresses the browser in non-interactive contexts", () => {
   assert.equal(shouldSuppressBrowser({ CI: "true" }), true);
   assert.equal(shouldSuppressBrowser({ GIT_DIR: ".git" }), true);
   assert.equal(shouldSuppressBrowser({ WEBEX_NO_BROWSER: "1" }), true);
+});
+
+test("stamps the package version into installed SKILL.md frontmatter", () => {
+  assert.equal(
+    stampVersion("---\nname: x\ndescription: d\n---\n\n# Body\n", "1.2.3-beta.0"),
+    "---\nname: x\ndescription: d\nmetadata:\n  version: \"1.2.3-beta.0\"\n---\n\n# Body\n",
+  );
+  assert.equal(
+    stampVersion("---\nname: x\nmetadata:\n  owner: a\n  version: \"0.1.0\"\nlicense: L\n---\nBody", "0.2.0"),
+    "---\nname: x\nmetadata:\n  version: \"0.2.0\"\n  owner: a\nlicense: L\n---\nBody",
+  );
+  assert.throws(() => stampVersion("# No frontmatter", "1.0.0"), /frontmatter/);
 });
 
 test("shares the project installation between Codex and Copilot", () => {
