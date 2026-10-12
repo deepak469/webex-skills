@@ -6,7 +6,7 @@ import { mkdir, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { homedir, platform, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const DEFAULT_SERVICE_URL =
   "https://webex-developer-ai-assistant-a.wbx2.com";
@@ -816,6 +816,32 @@ export function validateSearchRequest(value) {
   };
 }
 
+const KNOWN_CLIENTS = new Set(["claude", "codex", "copilot"]);
+
+export function detectClient({
+  flag = null,
+  env = process.env,
+  scriptPath = fileURLToPath(import.meta.url),
+} = {}) {
+  const label = (name) => `KNOWLEDGE_SKILL_${name.toUpperCase()}`;
+  const requested = typeof flag === "string" ? flag.trim().toLowerCase() : "";
+  if (KNOWN_CLIENTS.has(requested)) return label(requested);
+  if (env.CLAUDECODE === "1") return label("claude");
+  if (env.CODEX_SANDBOX || env.CODEX_SANDBOX_NETWORK_DISABLED) {
+    return label("codex");
+  }
+  if (env.TERM_PROGRAM === "vscode") return label("copilot");
+  const path = scriptPath.replaceAll("\\", "/");
+  if (path.includes("/.claude/skills/")) return label("claude");
+  if (path.includes("/.copilot/skills/")) return label("copilot");
+  return label("unknown");
+}
+
+function readClientFlag(args) {
+  const index = args.indexOf("--client");
+  return index === -1 ? null : args[index + 1] ?? null;
+}
+
 async function readSearchRequest(args) {
   const requestIndex = args.indexOf("--request");
   let serialized;
@@ -840,7 +866,7 @@ async function readSearchRequest(args) {
   }
 }
 
-async function search(request) {
+async function search(request, client) {
   let record = await ensureSession();
   const call = () => requestJson(
     record.service_url,
@@ -850,7 +876,7 @@ async function search(request) {
       headers: {
         Authorization: `${record.token_type || "Bearer"} ${record.access_token}`,
       },
-      body: request,
+      body: { ...request, client },
     },
   );
   try {
@@ -885,8 +911,10 @@ function printJson(value) {
 export async function main(argv = process.argv.slice(2)) {
   const command = argv[0];
   if (command === "search") {
-    const request = await readSearchRequest(argv.slice(1));
-    printJson(await search(request));
+    const args = argv.slice(1);
+    const request = await readSearchRequest(args);
+    const client = detectClient({ flag: readClientFlag(args) });
+    printJson(await search(request, client));
     return;
   }
   if (command === "auth") {
@@ -904,7 +932,7 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
   throw new SafeError(
-    "Usage: webex-knowledge.mjs <auth|status|search|logout> [--request path]",
+    "Usage: webex-knowledge.mjs <auth|status|search|logout> [--request path] [--client codex|copilot|claude]",
   );
 }
 

@@ -25,6 +25,7 @@ Constraints:
 - `sources`: one or both of `docs` and `api`; defaults to both.
 - `filter`: optional `webex_suite` or `cc`.
 - `max_results_per_source`: integer from 1–10; defaults to 5.
+- `client`: optional, added by the helper (not part of the agent's request file). One of `KNOWLEDGE_SKILL_CLAUDE`, `KNOWLEDGE_SKILL_CODEX`, `KNOWLEDGE_SKILL_COPILOT`, or `KNOWLEDGE_SKILL_UNKNOWN`. The helper uses the `--client` argument when valid, otherwise infers the client from its environment and install path.
 
 Response:
 

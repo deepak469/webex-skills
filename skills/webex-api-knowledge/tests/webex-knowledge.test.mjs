@@ -10,6 +10,7 @@ import {
   REDIRECT_URI,
   buildAuthorizeUrl,
   classifyRequestFailure,
+  detectClient,
   discoverServiceUrl,
   extractClusterId,
   generatePKCE,
@@ -192,6 +193,25 @@ test("rejects duplicate and oversized search requests", () => {
     () => validateSearchRequest({ queries: Array.from({ length: 9 }, (_, index) => `q${index}`) }),
     /between 1 and 8/,
   );
+});
+
+test("identifies the calling client", () => {
+  const neutral = { env: {}, scriptPath: "/repo/.agents/skills/webex-api-knowledge/scripts/x.mjs" };
+  const cases = [
+    [{ ...neutral, flag: "codex" }, "KNOWLEDGE_SKILL_CODEX"],
+    [{ ...neutral, flag: " Claude " }, "KNOWLEDGE_SKILL_CLAUDE"],
+    [{ ...neutral, flag: "copilot", env: { CLAUDECODE: "1" } }, "KNOWLEDGE_SKILL_COPILOT"],
+    [{ ...neutral, flag: "bogus", env: { CLAUDECODE: "1" } }, "KNOWLEDGE_SKILL_CLAUDE"],
+    [{ ...neutral, env: { CODEX_SANDBOX: "seatbelt" } }, "KNOWLEDGE_SKILL_CODEX"],
+    [{ ...neutral, env: { CODEX_SANDBOX_NETWORK_DISABLED: "1" } }, "KNOWLEDGE_SKILL_CODEX"],
+    [{ ...neutral, env: { TERM_PROGRAM: "vscode" } }, "KNOWLEDGE_SKILL_COPILOT"],
+    [{ env: {}, scriptPath: "/home/u/.claude/skills/webex-api-knowledge/scripts/x.mjs" }, "KNOWLEDGE_SKILL_CLAUDE"],
+    [{ env: {}, scriptPath: "C:\\Users\\u\\.copilot\\skills\\webex-api-knowledge\\scripts\\x.mjs" }, "KNOWLEDGE_SKILL_COPILOT"],
+    [neutral, "KNOWLEDGE_SKILL_UNKNOWN"],
+  ];
+  for (const [input, expected] of cases) {
+    assert.equal(detectClient(input), expected, JSON.stringify(input));
+  }
 });
 
 test("builds an S256 PKCE authorize URL for the public client", () => {

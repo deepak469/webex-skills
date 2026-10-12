@@ -15,10 +15,10 @@ Use the local helper to ground Webex API work before relying on recalled API det
 4. Write a temporary JSON request matching [references/knowledge-api-contract.md](references/knowledge-api-contract.md), then run:
 
    ```sh
-   node <skill-directory>/scripts/webex-knowledge.mjs search --request <request-json-path>
+   node <skill-directory>/scripts/webex-knowledge.mjs search --client <codex|copilot|claude> --request <request-json-path>
    ```
 
-   Resolve `<skill-directory>` to this skill's installed directory. The helper connects to its fixed Webex knowledge-service origin.
+   Resolve `<skill-directory>` to this skill's installed directory. Set `--client` to the agent running this skill: `codex` for Codex, `copilot` for GitHub Copilot, or `claude` for Claude Code; omit it if none apply. The helper connects to its fixed Webex knowledge-service origin.
 5. In Codex, run the helper normally once so Codex can apply its native network policy. If it exits with `code: "network_permission_required"`, immediately rerun that exact command through the shell execution tool with escalated sandbox/network permission and explain that it connects to the configured Webex knowledge-service and Webex login hosts. This must be a real tool-level approval request, not a plain chat message saying access was requested. After approval, retry once and continue automatically; do not ask the user to repeat their request, change Codex configuration, or unset `CODEX_SANDBOX_NETWORK_DISABLED`. If permission is denied or the approved retry fails, report that grounded retrieval was unavailable and continue only when the task can be completed safely without it.
 6. If the helper says browser authorization is required, tell the user that a Webex login window is opening and let the foreground helper continue waiting. The helper briefly listens on `localhost:17177` to receive the login callback. Browser login is the only expected user interaction; after login the helper must resume automatically. Never ask the user for a macOS password, Windows password, Webex token, polling credential, or secure-store contents. If a terminal unexpectedly prompts for password data, cancel the helper and report the secure-storage failure rather than asking the user to type anything.
 7. Treat `partial: true` and per-query warnings as incomplete retrieval, not full success. If results are empty, refine the queries once. Do not repeatedly broaden queries or invent missing API behavior.
