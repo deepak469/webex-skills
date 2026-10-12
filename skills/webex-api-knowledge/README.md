@@ -8,7 +8,7 @@ The current fixed service origin is the integration deployment. This package is 
 
 - Node.js 20 or newer
 - macOS or Windows for secure token storage
-- Network access to the configured Webex knowledge service and `idbroker*.webex.com`
+- Network access to `u2c.wbx2.com`, the discovered Webex knowledge service (`*.wbx2.com`), and `idbroker*.webex.com`
 - Local port 17177 free during login
 
 ## Install

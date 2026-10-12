@@ -8,19 +8,22 @@ import { homedir, platform, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const SERVICE_URL =
-  "https://webex-developer-ai-assistant-intb.ciscospark.com";
+export const DEFAULT_SERVICE_URL =
+  "https://webex-developer-ai-assistant-a.wbx2.com";
+export const U2C_URL = "https://u2c.wbx2.com/u2c/api/v1";
+const U2C_SERVICE_NAME = "webex-developer-ai-assistant";
+const SERVICE_HOST_SUFFIXES = ["wbx2.com", "ciscospark.com", "webex.com"];
 const API_PREFIX = "/webex-developer-ai-assistant/api/v1";
 const TOKEN_SKEW_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 20_000;
 
 // Public client: PKCE secures the flow, so there is no client secret.
 export const OAUTH_CLIENT_ID =
-  "C876332f0f6d5a0a384b9d015ae2696dbfc18cad4a9d1696557d8291a365e94fa";
+  "Cee9c0e3322bbb1ec117695231df69c06951a91d0acf45541c69de1d27b552cab";
 export const OAUTH_SCOPES = "identity:people_read spark:mcp";
 export const CALLBACK_PORT = 17177;
 export const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}/callback`;
-const DEFAULT_IDBROKER_URL = "https://idbrokerbts.webex.com";
+const DEFAULT_IDBROKER_URL = "https://idbroker.webex.com";
 const AUTHORIZE_URL = `${DEFAULT_IDBROKER_URL}/idb/oauth2/v1/authorize`;
 const LOGIN_TIMEOUT_MS = 300_000;
 const CLUSTER_IDBROKER = new Map([
@@ -45,10 +48,11 @@ class SafeError extends Error {
   }
 }
 
-export function resolveServiceUrl() {
+// Returns the origin only; U2C base URLs carry the service path, which API_PREFIX already includes.
+export function validateServiceUrl(value) {
   let parsed;
   try {
-    parsed = new URL(SERVICE_URL);
+    parsed = new URL(value);
   } catch {
     throw new SafeError("Knowledge service URL must be an absolute URL");
   }
@@ -57,17 +61,26 @@ export function resolveServiceUrl() {
       "Knowledge service URL must not contain credentials, query, or fragment",
     );
   }
-  const loopbackHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
-  if (
-    parsed.protocol !== "https:"
-    && !(parsed.protocol === "http:" && loopbackHosts.has(parsed.hostname))
-  ) {
-    throw new SafeError(
-      "Knowledge service URL must use HTTPS unless it targets loopback",
-    );
+  if (parsed.protocol !== "https:") {
+    throw new SafeError("Knowledge service URL must use HTTPS");
   }
-  parsed.pathname = parsed.pathname.replace(/\/+$/, "");
-  return parsed.toString().replace(/\/$/, "");
+  const host = parsed.hostname.toLowerCase();
+  if (
+    !SERVICE_HOST_SUFFIXES.some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`),
+    )
+  ) {
+    throw new SafeError("Knowledge service URL host is not an allowed Webex domain");
+  }
+  return parsed.origin;
+}
+
+export function parseU2CCatalog(payload) {
+  const baseUrl = payload?.services?.[0]?.serviceUrls?.[0]?.baseUrl;
+  if (typeof baseUrl !== "string" || !baseUrl) {
+    throw new SafeError("U2C catalog response has no service URL");
+  }
+  return validateServiceUrl(baseUrl);
 }
 
 export function classifyRequestFailure(
@@ -213,9 +226,9 @@ function runProcess(
   });
 }
 
-function storeIdentity(serviceUrl) {
+function storeIdentity() {
   const digest = createHash("sha256")
-    .update(serviceUrl)
+    .update(`${DEFAULT_IDBROKER_URL}|${OAUTH_CLIENT_ID}`)
     .digest("hex")
     .slice(0, 24);
   return {
@@ -225,8 +238,8 @@ function storeIdentity(serviceUrl) {
   };
 }
 
-function windowsStorePath(serviceUrl) {
-  const { digest } = storeIdentity(serviceUrl);
+function windowsStorePath() {
+  const { digest } = storeIdentity();
   const base = process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local");
   return join(base, "Cisco", "WebexDeveloperKnowledge", `${digest}.bin`);
 }
@@ -244,9 +257,9 @@ export function macOSKeychainSaveArgs(identity, secret) {
   ];
 }
 
-async function saveSecret(serviceUrl, secret) {
+async function saveSecret(secret) {
   if (platform() === "darwin") {
-    const identity = storeIdentity(serviceUrl);
+    const identity = storeIdentity();
     await runProcess(
       "/usr/bin/security",
       macOSKeychainSaveArgs(identity, secret),
@@ -254,7 +267,7 @@ async function saveSecret(serviceUrl, secret) {
     return;
   }
   if (platform() === "win32") {
-    const path = windowsStorePath(serviceUrl);
+    const path = windowsStorePath();
     await mkdir(dirname(path), { recursive: true });
     const script = [
       "$plain=[Console]::In.ReadToEnd()",
@@ -277,9 +290,9 @@ async function saveSecret(serviceUrl, secret) {
   );
 }
 
-async function readSecret(serviceUrl) {
+async function readSecret() {
   if (platform() === "darwin") {
-    const identity = storeIdentity(serviceUrl);
+    const identity = storeIdentity();
     const result = await runProcess(
       "/usr/bin/security",
       [
@@ -295,7 +308,7 @@ async function readSecret(serviceUrl) {
     return result.code === 0 ? result.stdout.trimEnd() : null;
   }
   if (platform() === "win32") {
-    const path = windowsStorePath(serviceUrl);
+    const path = windowsStorePath();
     try {
       await readFile(path);
     } catch (error) {
@@ -319,9 +332,9 @@ async function readSecret(serviceUrl) {
   );
 }
 
-async function deleteSecret(serviceUrl) {
+async function deleteSecret() {
   if (platform() === "darwin") {
-    const identity = storeIdentity(serviceUrl);
+    const identity = storeIdentity();
     await runProcess(
       "/usr/bin/security",
       [
@@ -336,7 +349,7 @@ async function deleteSecret(serviceUrl) {
     return;
   }
   if (platform() === "win32") {
-    await rm(windowsStorePath(serviceUrl), { force: true });
+    await rm(windowsStorePath(), { force: true });
     return;
   }
   throw new SafeError(
@@ -344,11 +357,10 @@ async function deleteSecret(serviceUrl) {
   );
 }
 
-function validateTokenRecord(value, serviceUrl) {
+function validateTokenRecord(value) {
   if (
     !value
     || typeof value !== "object"
-    || value.service_url !== serviceUrl
     || value.client_id !== OAUTH_CLIENT_ID
   ) {
     return null;
@@ -360,14 +372,22 @@ function validateTokenRecord(value, serviceUrl) {
   ) {
     return null;
   }
-  return value;
+  let serviceUrl = null;
+  if (typeof value.service_url === "string") {
+    try {
+      serviceUrl = validateServiceUrl(value.service_url);
+    } catch {
+      serviceUrl = null;
+    }
+  }
+  return { ...value, service_url: serviceUrl };
 }
 
-async function loadTokenRecord(serviceUrl) {
-  const serialized = await readSecret(serviceUrl);
+async function loadTokenRecord() {
+  const serialized = await readSecret();
   if (!serialized) return null;
   try {
-    return validateTokenRecord(JSON.parse(serialized), serviceUrl);
+    return validateTokenRecord(JSON.parse(serialized));
   } catch {
     throw new SafeError(
       "Stored Webex credentials are invalid; run logout and authenticate again",
@@ -375,16 +395,11 @@ async function loadTokenRecord(serviceUrl) {
   }
 }
 
-async function saveTokenRecord(serviceUrl, record) {
-  await saveSecret(serviceUrl, JSON.stringify(record));
+async function saveTokenRecord(record) {
+  await saveSecret(JSON.stringify(record));
 }
 
-function normalizeTokenResponse(
-  payload,
-  serviceUrl,
-  previous = null,
-  clusterId = null,
-) {
+function normalizeTokenResponse(payload, previous = null, clusterId = null) {
   if (!payload || typeof payload !== "object") {
     throw new SafeError("Webex token response is invalid");
   }
@@ -412,8 +427,8 @@ function normalizeTokenResponse(
       ? null
       : previous?.refresh_token_expires_at ?? null;
   return {
-    version: 2,
-    service_url: serviceUrl,
+    version: 3,
+    service_url: previous?.service_url ?? null,
     client_id: OAUTH_CLIENT_ID,
     cluster_id: clusterId ?? previous?.cluster_id ?? null,
     access_token: payload.access_token,
@@ -624,7 +639,7 @@ async function checkIdbrokerReachable() {
   }
 }
 
-async function authenticate(serviceUrl) {
+async function authenticate() {
   await checkIdbrokerReachable();
   const { verifier, challenge } = generatePKCE();
   const state = generateState();
@@ -652,12 +667,12 @@ async function authenticate(serviceUrl) {
     },
     clusterId,
   );
-  const record = normalizeTokenResponse(tokens, serviceUrl, null, clusterId);
-  await saveTokenRecord(serviceUrl, record);
+  const record = normalizeTokenResponse(tokens, null, clusterId);
+  await saveTokenRecord(record);
   return record;
 }
 
-async function refreshTokens(serviceUrl, previous) {
+async function refreshTokens(previous) {
   const payload = await requestToken(
     {
       grant_type: "refresh_token",
@@ -666,8 +681,8 @@ async function refreshTokens(serviceUrl, previous) {
     },
     previous.cluster_id,
   );
-  const record = normalizeTokenResponse(payload, serviceUrl, previous);
-  await saveTokenRecord(serviceUrl, record);
+  const record = normalizeTokenResponse(payload, previous);
+  await saveTokenRecord(record);
   return record;
 }
 
@@ -687,16 +702,13 @@ function refreshTokenUsable(record) {
   );
 }
 
-async function ensureTokens(
-  serviceUrl,
-  { forceAuth = false, forceRefresh = false } = {},
-) {
-  if (forceAuth) return authenticate(serviceUrl);
-  const record = await loadTokenRecord(serviceUrl);
+async function ensureTokens({ forceAuth = false, forceRefresh = false } = {}) {
+  if (forceAuth) return authenticate();
+  const record = await loadTokenRecord();
   if (!forceRefresh && accessTokenUsable(record)) return record;
   if (refreshTokenUsable(record)) {
     try {
-      return await refreshTokens(serviceUrl, record);
+      return await refreshTokens(record);
     } catch (error) {
       if (
         !(error instanceof SafeError)
@@ -706,7 +718,40 @@ async function ensureTokens(
       }
     }
   }
-  return authenticate(serviceUrl);
+  return authenticate();
+}
+
+export async function discoverServiceUrl(record) {
+  const { payload } = await requestJson(
+    U2C_URL,
+    `/user/catalog?services=${encodeURIComponent(U2C_SERVICE_NAME)}`,
+    {
+      headers: {
+        Authorization: `${record.token_type || "Bearer"} ${record.access_token}`,
+      },
+    },
+  );
+  return parseU2CCatalog(payload);
+}
+
+// Only a fresh login clears service_url, so U2C runs once per sign-in; refreshes reuse it.
+async function ensureSession(options) {
+  const record = await ensureTokens(options);
+  if (record.service_url) return record;
+  let serviceUrl;
+  try {
+    serviceUrl = await discoverServiceUrl(record);
+  } catch (error) {
+    const reason = error instanceof SafeError ? error.message : "unexpected error";
+    process.stderr.write(
+      `U2C service discovery failed (${reason}); using ${DEFAULT_SERVICE_URL}\n`,
+    );
+    // Not persisted, so the next run retries discovery.
+    return { ...record, service_url: DEFAULT_SERVICE_URL };
+  }
+  const updated = { ...record, service_url: serviceUrl };
+  await saveTokenRecord(updated);
+  return updated;
 }
 
 export function validateSearchRequest(value) {
@@ -795,10 +840,10 @@ async function readSearchRequest(args) {
   }
 }
 
-async function search(serviceUrl, request) {
-  let record = await ensureTokens(serviceUrl);
+async function search(request) {
+  let record = await ensureSession();
   const call = () => requestJson(
-    serviceUrl,
+    record.service_url,
     `${API_PREFIX}/knowledge/search`,
     {
       method: "POST",
@@ -812,14 +857,14 @@ async function search(serviceUrl, request) {
     return (await call()).payload;
   } catch (error) {
     if (!(error instanceof SafeError) || error.status !== 401) throw error;
-    record = await ensureTokens(serviceUrl, { forceRefresh: true });
+    record = await ensureSession({ forceRefresh: true });
     return (await call()).payload;
   }
 }
 
-function safeStatus(record, serviceUrl) {
+function safeStatus(record) {
   return {
-    service_url: serviceUrl,
+    service_url: record?.service_url ?? null,
     authenticated: Boolean(record),
     access_token_usable: accessTokenUsable(record),
     refresh_token_usable: refreshTokenUsable(record),
@@ -839,24 +884,23 @@ function printJson(value) {
 
 export async function main(argv = process.argv.slice(2)) {
   const command = argv[0];
-  const serviceUrl = resolveServiceUrl();
   if (command === "search") {
     const request = await readSearchRequest(argv.slice(1));
-    printJson(await search(serviceUrl, request));
+    printJson(await search(request));
     return;
   }
   if (command === "auth") {
-    const record = await ensureTokens(serviceUrl, { forceAuth: true });
-    printJson(safeStatus(record, serviceUrl));
+    const record = await ensureSession({ forceAuth: true });
+    printJson(safeStatus(record));
     return;
   }
   if (command === "status") {
-    printJson(safeStatus(await loadTokenRecord(serviceUrl), serviceUrl));
+    printJson(safeStatus(await loadTokenRecord()));
     return;
   }
   if (command === "logout") {
-    await deleteSecret(serviceUrl);
-    printJson({ service_url: serviceUrl, authenticated: false });
+    await deleteSecret();
+    printJson({ authenticated: false });
     return;
   }
   throw new SafeError(

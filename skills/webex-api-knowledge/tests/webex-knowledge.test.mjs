@@ -5,21 +5,23 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  DEFAULT_SERVICE_URL,
   OAUTH_CLIENT_ID,
   REDIRECT_URI,
-  SERVICE_URL,
   buildAuthorizeUrl,
   classifyRequestFailure,
+  discoverServiceUrl,
   extractClusterId,
   generatePKCE,
   macOSKeychainSaveArgs,
   main,
+  parseU2CCatalog,
   requestToken,
-  resolveServiceUrl,
   shouldSuppressBrowser,
   startCallbackServer,
   tokenUrlFor,
   validateSearchRequest,
+  validateServiceUrl,
 } from "../skill/webex-api-knowledge/scripts/webex-knowledge.mjs";
 import { installationTargets, parseArguments } from "../scripts/install-skill.mjs";
 
@@ -33,17 +35,68 @@ async function withFetch(stub, run) {
   }
 }
 
-test("uses only the fixed integration origin", () => {
+test("defaults to the production service origin", () => {
   assert.equal(
-    SERVICE_URL,
-    "https://webex-developer-ai-assistant-intb.ciscospark.com",
+    DEFAULT_SERVICE_URL,
+    "https://webex-developer-ai-assistant-a.wbx2.com",
   );
-  assert.equal(resolveServiceUrl(), SERVICE_URL);
+  assert.equal(validateServiceUrl(DEFAULT_SERVICE_URL), DEFAULT_SERVICE_URL);
+});
+
+test("accepts only HTTPS Webex service origins", () => {
+  assert.equal(
+    validateServiceUrl("https://x.ciscospark.com/webex-developer-ai-assistant"),
+    "https://x.ciscospark.com",
+  );
+  assert.throws(() => validateServiceUrl("http://x.wbx2.com"), /HTTPS/);
+  assert.throws(() => validateServiceUrl("https://evilwbx2.com"), /allowed Webex domain/);
+  assert.throws(() => validateServiceUrl("https://wbx2.com.evil.io"), /allowed Webex domain/);
+  assert.throws(() => validateServiceUrl("https://u:p@x.wbx2.com"), /credentials/);
+  assert.throws(() => validateServiceUrl("https://x.wbx2.com/?a=1"), /query/);
+  assert.throws(() => validateServiceUrl("not a url"), /absolute URL/);
+});
+
+test("parses the service origin from a U2C catalog", () => {
+  assert.equal(
+    parseU2CCatalog({
+      services: [{
+        serviceName: "webex-developer-ai-assistant",
+        serviceUrls: [{
+          baseUrl: "https://webex-developer-ai-assistant-a.wbx2.com/webex-developer-ai-assistant",
+        }],
+      }],
+    }),
+    "https://webex-developer-ai-assistant-a.wbx2.com",
+  );
+  assert.throws(() => parseU2CCatalog({}), /no service URL/);
+  assert.throws(() => parseU2CCatalog({ services: [{ serviceUrls: [] }] }), /no service URL/);
+  assert.throws(
+    () => parseU2CCatalog({ services: [{ serviceUrls: [{ baseUrl: "https://evil.example" }] }] }),
+    /allowed Webex domain/,
+  );
+});
+
+test("queries U2C with the user's bearer token", async () => {
+  let captured;
+  const origin = await withFetch(async (url, init) => {
+    captured = { url, init };
+    return new Response(JSON.stringify({
+      services: [{ serviceUrls: [{ baseUrl: "https://svc-b.wbx2.com/webex-developer-ai-assistant" }] }],
+    }));
+  }, () => discoverServiceUrl({ token_type: "Bearer", access_token: "tok" }));
+  assert.equal(origin, "https://svc-b.wbx2.com");
+  assert.equal(
+    captured.url,
+    "https://u2c.wbx2.com/u2c/api/v1/user/catalog?services=webex-developer-ai-assistant",
+  );
+  assert.equal(captured.init.method, "GET");
+  assert.equal(captured.init.headers.Authorization, "Bearer tok");
+  assert.equal(captured.init.redirect, "error");
 });
 
 test("classifies a failed sandboxed request as requiring permission", () => {
   const blocked = classifyRequestFailure(
-    SERVICE_URL,
+    DEFAULT_SERVICE_URL,
     new TypeError("fetch failed"),
     { CODEX_SANDBOX_NETWORK_DISABLED: "1" },
   );
@@ -54,14 +107,14 @@ test("classifies a failed sandboxed request as requiring permission", () => {
   );
 
   const ordinary = classifyRequestFailure(
-    SERVICE_URL,
+    DEFAULT_SERVICE_URL,
     new TypeError("fetch failed"),
     {},
   );
   assert.equal(ordinary.code, "service_unavailable");
 
   const timeout = classifyRequestFailure(
-    SERVICE_URL,
+    DEFAULT_SERVICE_URL,
     Object.assign(new Error("timed out"), { name: "TimeoutError" }),
     { CODEX_SANDBOX_NETWORK_DISABLED: "1" },
   );
@@ -150,7 +203,7 @@ test("builds an S256 PKCE authorize URL for the public client", () => {
   );
 
   const url = new URL(buildAuthorizeUrl("state-fixture", challenge));
-  assert.equal(url.origin + url.pathname, "https://idbrokerbts.webex.com/idb/oauth2/v1/authorize");
+  assert.equal(url.origin + url.pathname, "https://idbroker.webex.com/idb/oauth2/v1/authorize");
   assert.deepEqual(Object.fromEntries(url.searchParams), {
     response_type: "code",
     client_id: OAUTH_CLIENT_ID,
@@ -170,12 +223,16 @@ test("routes token requests to the code's cluster idbroker", () => {
     "https://idbroker-eu.webex.com/idb/oauth2/v1/access_token",
   );
   assert.equal(
-    tokenUrlFor("ZZZZ"),
+    tokenUrlFor("A52D"),
     "https://idbrokerbts.webex.com/idb/oauth2/v1/access_token",
   );
   assert.equal(
+    tokenUrlFor("ZZZZ"),
+    "https://idbroker.webex.com/idb/oauth2/v1/access_token",
+  );
+  assert.equal(
     tokenUrlFor(null),
-    "https://idbrokerbts.webex.com/idb/oauth2/v1/access_token",
+    "https://idbroker.webex.com/idb/oauth2/v1/access_token",
   );
 });
 

@@ -2,7 +2,7 @@
 
 ## Service origin
 
-The helper uses the single service origin defined in `scripts/webex-knowledge.mjs`. The released origin must use HTTPS. To test against a local service in a development checkout, edit that constant; do not distribute that edited package.
+After a fresh login the helper discovers the service origin from the Webex U2C catalog (`GET https://u2c.wbx2.com/u2c/api/v1/user/catalog?services=webex-developer-ai-assistant`) using the user's access token. The origin of `services[0].serviceUrls[0].baseUrl` must be HTTPS on `wbx2.com`, `ciscospark.com`, or `webex.com`, and is stored with the tokens. Token refreshes reuse the stored origin; only a new login re-runs discovery. If discovery fails, the helper uses `https://webex-developer-ai-assistant-a.wbx2.com` for that run and retries discovery on the next run.
 
 ## Search
 
