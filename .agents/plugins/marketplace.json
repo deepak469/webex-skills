@@ -1,7 +1,7 @@
 {
-  "name": "webex-connect-ai",
+  "name": "webex-skills",
   "interface": {
-    "displayName": "Webex Connect AI"
+    "displayName": "Webex Skills"
   },
   "plugins": [
     {

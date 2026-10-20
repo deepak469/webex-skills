@@ -7,7 +7,12 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT, SKILLS_ROOT, listSkills } from "./lib/skills.mjs";
 
-const SHARED_PATHS = [/^scripts\//, /^\.github\//, /^package\.json$/];
+const SHARED_PATHS = [
+  /^scripts\/(?:lib\/skills\.mjs|validate-skill\.mjs|changed-skills\.mjs|package-skill\.mjs|changelog\.mjs)$/,
+  /^scripts\/lib\/changelog\.mjs$/,
+  /^\.github\/workflows\/publish\.yml$/,
+  /^package\.json$/,
+];
 
 function git(...args) {
   return execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8" }).trim();

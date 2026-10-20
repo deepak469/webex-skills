@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "validate": "node scripts/validate-skill.mjs && node scripts/validate-plugin.mjs",
+    "catalog:generate": "node scripts/generate-catalog.mjs",
     "test": "npm test --workspaces --if-present",
     "package": "node scripts/package-skill.mjs"
   },
