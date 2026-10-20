@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Webhooks"
+  short_description: "Callbacks, events, signatures, retries"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-webhooks-events to design or debug Webex Connect callbacks, webhooks, and event handlers."

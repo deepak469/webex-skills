@@ -1,0 +1,7 @@
+interface:
+  display_name: "iOS Push + In-App Builder"
+  short_description: "Build Webex Connect iOS Push and In-App apps"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-ios-push-inapp-messaging-builder to generate a SwiftUI iOS Push and In-App Messaging demo with SPM."

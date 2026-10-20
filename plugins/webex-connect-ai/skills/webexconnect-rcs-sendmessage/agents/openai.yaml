@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect RCS"
+  short_description: "RCS messages, capability, SMS fallback"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-rcs-sendmessage to build a Webex Connect RCS Send Message API v2 request with fallback."

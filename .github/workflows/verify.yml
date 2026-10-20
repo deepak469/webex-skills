@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skills: ${{ steps.detect.outputs.skills }}
+      plugin: ${{ steps.detect.outputs.plugin }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -26,6 +27,13 @@ jobs:
           skills="$(node scripts/changed-skills.mjs "$BASE_SHA" "$GITHUB_SHA")"
           echo "Changed skills: $skills"
           echo "skills=$skills" >> "$GITHUB_OUTPUT"
+          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            plugin_files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | grep -E '^(plugins/webex-connect-ai/|\.agents/plugins/|\.claude-plugin/|\.cursor-plugin/|scripts/validate-plugin\.mjs$|package\.json$)' || true)"
+            if [[ -n "$plugin_files" ]]; then plugin=true; else plugin=false; fi
+          else
+            plugin=true
+          fi
+          echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
 
   verify:
     needs: detect
@@ -47,15 +55,27 @@ jobs:
       - run: npm test --workspace "skills/$SKILL"
       - run: npm run pack:check --workspace "skills/$SKILL"
 
+  verify-plugin:
+    needs: detect
+    if: needs.detect.outputs.plugin == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - run: node scripts/validate-plugin.mjs
+
   # Single stable check name for branch protection, regardless of which skills ran.
   verified:
-    needs: [detect, verify]
+    needs: [detect, verify, verify-plugin]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - env:
           DETECT: ${{ needs.detect.result }}
           VERIFY: ${{ needs.verify.result }}
+          PLUGIN: ${{ needs.verify-plugin.result }}
         run: |
-          echo "detect=$DETECT verify=$VERIFY"
-          [[ "$DETECT" == "success" && ( "$VERIFY" == "success" || "$VERIFY" == "skipped" ) ]]
+          echo "detect=$DETECT verify=$VERIFY plugin=$PLUGIN"
+          [[ "$DETECT" == "success" && ( "$VERIFY" == "success" || "$VERIFY" == "skipped" ) && ( "$PLUGIN" == "success" || "$PLUGIN" == "skipped" ) ]]

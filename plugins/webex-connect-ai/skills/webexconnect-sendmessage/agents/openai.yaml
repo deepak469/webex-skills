@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Send Message"
+  short_description: "Unified v1/v2 send payload guide"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-sendmessage to choose the right Webex Connect send API family and payload shape."

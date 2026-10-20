@@ -1,0 +1,20 @@
+---
+description: Webex Connect implementation guardrails for messaging channels, live chat widgets, Android/iOS push, and in-app messaging.
+globs:
+alwaysApply: false
+---
+
+# Webex Connect Development
+
+- Treat Webex Connect as the only messaging provider in this repository.
+- Use `$webexconnect-sendmessage` as the outbound messaging front door. It must
+  select exactly one channel adapter, then add shared skills only as needed.
+- Use the relevant Webex Connect skill before generating channel payloads,
+  widgets, Android/iOS demos, setup flows, or webhook handlers.
+- Treat `skills/webex-connect/` as the canonical standalone skill layer and
+  `plugins/webex-connect-ai/` as generated distribution packaging.
+- Verify region, API host, authentication headers, app/service IDs, channel sender assets, and callback URLs before writing runnable integration code.
+- Do not place secrets, service keys, JWTs, tenant-specific identifiers, or customer data in source control.
+- Preserve the user's selected provider choices. Android FCM/HMS provider selection happens at build time; iOS Push uses APNs through SPM-based SDK integration. User ID entry happens inside the running demo app.
+- For UI builders, create a usable app surface first, then verify navigation, message rendering, media previews, forms, disabled actions after callbacks, and receive-message behavior.
+- Prefer official Webex Connect developer documentation and SDK repositories over memory when SDK coordinates, API parameters, regional hosts, or platform setup may have changed.

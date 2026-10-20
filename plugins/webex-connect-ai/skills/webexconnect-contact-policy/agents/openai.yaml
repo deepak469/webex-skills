@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Contact Policy"
+  short_description: "Consent groups and frequency caps"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-contact-policy to design consent, opt-out, and frequency-cap checks for a Webex Connect send."

@@ -6,7 +6,7 @@
     "skills/*"
   ],
   "scripts": {
-    "validate": "node scripts/validate-skill.mjs",
+    "validate": "node scripts/validate-skill.mjs && node scripts/validate-plugin.mjs",
     "test": "npm test --workspaces --if-present",
     "package": "node scripts/package-skill.mjs"
   },

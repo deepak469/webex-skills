@@ -1,0 +1,7 @@
+interface:
+  display_name: "Apple Messages for Business"
+  short_description: "AMB payloads, opaque IDs, rich messages"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-apple-messages-for-business-sendmessage to build a Webex Connect Apple Messages for Business payload."

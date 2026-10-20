@@ -1,12 +1,13 @@
-# Webex Skills
+# Webex Skills and Plugins
 
-Agent skills for building with Webex, for Codex, GitHub Copilot, and Claude Code.
+Agent skills and plugins for building with Webex, for Codex, GitHub Copilot, Claude Code, and Cursor.
 
-## Skills
+## Packages
 
-| Skill | Description | Releases |
+| Package | Description | Details |
 | --- | --- | --- |
-| [webex-api-knowledge](skills/webex-api-knowledge/) | Grounded Webex Public API knowledge for building integrations | [release/](skills/webex-api-knowledge/release/) |
+| [webex-api-knowledge](skills/webex-api-knowledge/) | Grounded Webex Public API knowledge for building integrations | [releases](skills/webex-api-knowledge/release/) |
+| [webex-connect-ai](plugins/webex-connect-ai/) | Codex, Claude Code, and Cursor plugin with 19 Webex Connect skills | [plugin files](plugins/webex-connect-ai/) |
 
 See each skill's README for installation and usage.
 
@@ -21,26 +22,42 @@ skills/<name>/
   tests/                    skill tests (`npm test`)
   release/                  CHANGELOG.md and released packages, one .tgz per version
 scripts/                    shared repo tooling (validate, detect changes, changelog, package)
-.agents/skills/             project-level agent skills for working on this repo (e.g. skill-changelog)
+.agents/skills/             project-level agent skills for working on this repo
+.agents/plugins/            local Codex plugin marketplace
+.claude-plugin/             local Claude Code plugin marketplace
+.cursor-plugin/             local Cursor plugin marketplace
+plugins/webex-connect-ai/   installable Webex Connect AI plugin
 .github/workflows/          CI verification and release packaging
 ```
 
 Each skill is an npm workspace, so its `package.json` owns its version and packaging.
+
+The `webex-connect-ai` plugin is a separate installable package. Its 19 skills,
+commands, rules, manifests, and branding live under `plugins/webex-connect-ai/`.
+Codex discovers the local plugin through `.agents/plugins/marketplace.json`.
 
 ## Development
 
 Requires Node.js 20 or newer.
 
 ```sh
-npm run validate                                  # validate all skills
+npm run validate                                  # validate skills and the plugin package
 npm test                                          # test all skills
 npm test --workspace skills/<name>                # test one skill
 node scripts/package-skill.mjs <name> --dry-run   # preview a package
 ```
 
+Plugin changes are checked by the same `npm run validate` command. From this
+repository, install the local Codex plugin with:
+
+```sh
+codex plugin marketplace add .
+codex plugin add webex-connect-ai@webex-connect-ai
+```
+
 ## CI
 
-**Verify skills** runs on every push and pull request. It detects which skills changed and validates, tests, and dry-run packs only those. Changes to shared `scripts/`, `.github/`, or the root `package.json` verify every skill. Use the `verified` check for branch protection.
+**Verify skills** runs on every push and pull request. It detects changed skills and validates, tests, and dry-run packs only those. Plugin changes also run the plugin package validator. Changes to shared skill tooling verify all skills. Use the `verified` check for branch protection.
 
 ## Releasing a skill
 
