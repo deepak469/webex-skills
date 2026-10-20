@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect WhatsApp"
+  short_description: "WhatsApp templates, media, interactions"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-whatsapp-sendmessage to build a Webex Connect WhatsApp message or template payload."

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect SMS"
+  short_description: "SMS v2 payloads, sender discovery, receipts"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-sms-sendmessage to build a Webex Connect SMS Send Message API v2 request."

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect MMS"
+  short_description: "MMS attachments, media URLs, fallback"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-mms-sendmessage to build a Webex Connect MMS Send Message API v2 request."

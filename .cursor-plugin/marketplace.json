@@ -1,0 +1,25 @@
+{
+  "name": "webex-connect-ai",
+  "owner": {
+    "name": "Cisco SQBU"
+  },
+  "plugins": [
+    {
+      "name": "webex-connect-ai",
+      "source": "./plugins/webex-connect-ai",
+      "description": "Webex Connect AI skills, rules, and commands for digital-asset lifecycle operations, digital channels, live chat widgets, and Android plus iOS push and in-app messaging demos.",
+      "version": "0.2.39",
+      "author": {
+        "name": "Cisco SQBU"
+      },
+      "category": "Developer Tools",
+      "tags": [
+        "webex-connect",
+        "messaging",
+        "android",
+        "ios",
+        "live-chat"
+      ]
+    }
+  ]
+}

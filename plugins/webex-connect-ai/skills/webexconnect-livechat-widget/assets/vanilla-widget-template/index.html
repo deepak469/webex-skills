@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Webex Connect Live Chat</title>
+    <link rel="manifest" href="/assets/manifest/manifest.json" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="webex-live-chat" class="wc-widget">
+      <button class="wc-launcher" type="button" aria-controls="wc-panel" aria-expanded="false">
+        Chat
+        <span class="wc-badge" hidden>0</span>
+      </button>
+
+      <section id="wc-panel" class="wc-panel" role="dialog" aria-labelledby="wc-title" hidden>
+        <header class="wc-header wc-brand-header">
+          <div class="wc-profile-heading">
+            <div class="wc-profile-avatar" data-profile-avatar>W</div>
+            <div>
+              <h2 id="wc-title" data-profile-name>Webex Connect</h2>
+              <p class="wc-profile-subtitle" data-profile-subtitle>Live support</p>
+              <p class="wc-status" data-status>Starting</p>
+            </div>
+          </div>
+          <div class="wc-header-actions">
+            <button class="wc-icon-button wc-settings-open" data-settings-open type="button" aria-label="Open settings">⚙</button>
+            <button class="wc-icon-button wc-expand" data-expand type="button" aria-label="Expand widget">⛶</button>
+            <button class="wc-icon-button wc-close" type="button" aria-label="Close chat">×</button>
+          </div>
+        </header>
+        <div class="wc-alert" data-alert hidden></div>
+        <section class="wc-login-view" data-login-view hidden aria-labelledby="wc-login-heading">
+          <div class="wc-login-card">
+            <p class="wc-modal-kicker">Webex Connect</p>
+            <h1 id="wc-login-heading">Sign in to live support</h1>
+            <p class="wc-login-intro">Enter the visitor identity to load that visitor’s conversations.</p>
+            <form class="wc-login-form" data-login-form>
+              <label for="wc-login-user-id">User ID</label>
+              <input id="wc-login-user-id" data-login-user-id required autocomplete="username" placeholder="e.g. visitor-123" />
+              <label for="wc-login-customer-id">Customer ID <span>(optional)</span></label>
+              <input id="wc-login-customer-id" data-login-customer-id autocomplete="organization" placeholder="e.g. customer-456" />
+              <label for="wc-login-device-id">Device ID <span>(optional)</span></label>
+              <input id="wc-login-device-id" data-login-device-id autocomplete="off" placeholder="Use a stable device ID when available" />
+              <p class="wc-login-error" data-login-error hidden></p>
+              <button class="wc-primary-button wc-login-submit" data-login-submit type="submit">Continue to chat</button>
+            </form>
+          </div>
+        </section>
+        <section class="wc-settings-view" data-settings-modal hidden aria-labelledby="wc-settings-heading">
+          <div class="wc-settings-view-header">
+            <div>
+              <p class="wc-modal-kicker">Webex Connect</p>
+              <h3 id="wc-settings-heading">Settings &amp; diagnostics</h3>
+            </div>
+            <button class="wc-icon-button" data-settings-close type="button" aria-label="Close settings">×</button>
+          </div>
+          <p class="wc-settings-intro">Core SDK state for this browser session. Sensitive tokens are never displayed.</p>
+          <div class="wc-settings-grid" data-settings-values></div>
+          <div class="wc-settings-actions">
+            <button class="wc-secondary-button" data-request-push type="button">Enable notifications</button>
+            <button class="wc-secondary-button" data-switch-user type="button">Switch user</button>
+            <button class="wc-secondary-button" data-logout type="button">Log out</button>
+          </div>
+        </section>
+        <section class="wc-title-view" data-title-modal hidden aria-labelledby="wc-title-modal-heading">
+          <form class="wc-modal-card" data-title-form>
+            <button class="wc-modal-close" data-title-cancel type="button" aria-label="Cancel">×</button>
+            <p class="wc-modal-kicker">New conversation</p>
+            <h3 id="wc-title-modal-heading">What would you like to call this conversation?</h3>
+            <label class="wc-modal-label" for="wc-thread-title-input">Conversation title</label>
+            <input id="wc-thread-title-input" data-title-input required maxlength="80" placeholder="e.g. Order support" autocomplete="off" />
+            <p class="wc-modal-error" data-title-error hidden>Please enter a conversation title.</p>
+            <div class="wc-modal-actions">
+              <button class="wc-secondary-button" data-title-cancel type="button">Cancel</button>
+              <button class="wc-primary-button" data-title-submit type="submit">Create conversation</button>
+            </div>
+          </form>
+        </section>
+        <div class="wc-workspace">
+          <aside class="wc-thread-panel" aria-label="Conversations">
+            <div class="wc-thread-toolbar">
+              <h3>Conversations</h3>
+              <button class="wc-refresh-threads" data-refresh-threads type="button">Refresh</button>
+            </div>
+            <p class="wc-thread-empty" data-thread-empty>No conversations yet. Start a new conversation when you’re ready.</p>
+            <div class="wc-threads" data-threads></div>
+            <div class="wc-thread-footer">
+              <button class="wc-new-thread" data-new-thread type="button">New conversation</button>
+            </div>
+          </aside>
+          <section class="wc-conversation" data-conversation hidden aria-label="Selected conversation">
+            <header class="wc-conversation-header">
+              <button class="wc-back" data-back-to-threads type="button" aria-label="Back to conversations" hidden>‹</button>
+              <div>
+                <h3 data-thread-title>Conversation</h3>
+                <p><span data-thread-status>Active</span><span class="wc-thread-id" data-thread-id></span></p>
+              </div>
+              <details class="wc-thread-menu">
+                <summary aria-label="Thread actions">⋯</summary>
+                <div class="wc-thread-menu-popover">
+                  <button data-close-thread type="button">Close thread</button>
+                  <button data-reopen-thread type="button" hidden>Reopen thread</button>
+                </div>
+              </details>
+            </header>
+            <div class="wc-thread-locked" data-thread-locked hidden>This conversation is closed. Reopen it to send a message.</div>
+            <div class="wc-history-loading" data-loading hidden>Loading conversation…</div>
+            <ol class="wc-messages" data-messages aria-live="polite"></ol>
+            <div class="wc-typing" data-typing hidden>Agent is typing…</div>
+            <form class="wc-composer" data-composer>
+              <label class="sr-only" for="wc-input">Message</label>
+              <div class="wc-composer-shell">
+                <textarea id="wc-input" data-input rows="1" placeholder="Select a conversation to start chatting" disabled></textarea>
+                <button class="wc-composer-tool" data-emoji type="button" aria-label="Insert emoji" disabled>☺</button>
+                <button class="wc-composer-send" data-send type="submit" aria-label="Send message" disabled>➤</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </section>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <!-- Add Firebase compat scripts here only when browser push is enabled. -->
+    <script src="/assets/js/imi-environments.js"></script>
+    <script src="/assets/js/webex-connect-sdk.min.js"></script>
+    <script src="./config.example.js"></script>
+    <script src="./src/webex-live-chat-widget.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "webex-connect-ai",
+  "interface": {
+    "displayName": "Webex Connect AI"
+  },
+  "plugins": [
+    {
+      "name": "webex-connect-ai",
+      "version": "0.2.39",
+      "source": {
+        "source": "local",
+        "path": "./plugins/webex-connect-ai"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
