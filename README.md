@@ -34,7 +34,8 @@ Each skill is an npm workspace, so its `package.json` owns its version and packa
 
 The `webex-connect-ai` plugin is a separate installable package. Its 19 skills,
 commands, rules, manifests, and branding live under `plugins/webex-connect-ai/`.
-Codex discovers the local plugin through `.agents/plugins/marketplace.json`.
+The generated [plugin catalog](PLUGINS.md) lists plugins and their skills.
+Codex discovers plugins through `.agents/plugins/marketplace.json`.
 
 ## Development
 
@@ -45,7 +46,11 @@ npm run validate                                  # validate skills and the plug
 npm test                                          # test all skills
 npm test --workspace skills/<name>                # test one skill
 node scripts/package-skill.mjs <name> --dry-run   # preview a package
+npm run catalog:generate                          # refresh PLUGINS.md and catalog.json
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for adding plugins and keeping their
+manifests, marketplaces, and catalog in sync.
 
 Plugin changes are checked by the same `npm run validate` command. From this
 repository, install the local Codex plugin with:
