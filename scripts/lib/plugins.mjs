@@ -4,33 +4,14 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 export const MARKETPLACE_NAME = "webex-skills";
 
 export const SURFACES = [
-  {
-    name: "Codex",
-    manifest: ".codex-plugin/plugin.json",
-    marketplace: ".agents/plugins/marketplace.json",
-    sourceType: "codex",
-  },
-  {
-    name: "Claude Code",
-    manifest: ".claude-plugin/plugin.json",
-    marketplace: ".claude-plugin/marketplace.json",
-    sourceType: "path",
-  },
-  {
-    name: "Cursor",
-    manifest: ".cursor-plugin/plugin.json",
-    marketplace: ".cursor-plugin/marketplace.json",
-    sourceType: "path",
-  },
-  {
-    name: "Windsurf",
-    manifest: ".windsurf-plugin/plugin.json",
-    marketplace: ".windsurf-plugin/marketplace.json",
-    sourceType: "path",
-  },
+  { name: "Codex", manifest: ".codex-plugin/plugin.json", marketplace: ".agents/plugins/marketplace.json", sourceType: "codex" },
+  { name: "Claude Code", manifest: ".claude-plugin/plugin.json", marketplace: ".claude-plugin/marketplace.json", sourceType: "path" },
+  { name: "Cursor", manifest: ".cursor-plugin/plugin.json", marketplace: ".cursor-plugin/marketplace.json", sourceType: "path" },
+  { name: "Windsurf", manifest: ".windsurf-plugin/plugin.json", marketplace: ".windsurf-plugin/marketplace.json", sourceType: "path" },
 ];
 
 const VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+const NAME_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function repoPath(root, path) {
   return relative(root, path).split(sep).join("/");
@@ -62,19 +43,16 @@ function readJson(root, path, errors, required = false) {
 function frontmatterFields(text) {
   const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return null;
-
-  const lines = match[1].split(/\r?\n/);
   const fields = {};
+  const lines = match[1].split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
-    const field = lines[index].match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    const line = lines[index];
+    const field = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (!field) continue;
-
     const [, key, rawValue] = field;
     if ([">", ">-", ">+", "|", "|-", "|+"].includes(rawValue.trim())) {
       const parts = [];
-      while (index + 1 < lines.length && /^\s+\S/.test(lines[index + 1])) {
-        parts.push(lines[++index].trim());
-      }
+      while (index + 1 < lines.length && /^\s+\S/.test(lines[index + 1])) parts.push(lines[++index].trim());
       fields[key] = parts.join(" ").trim();
     } else {
       fields[key] = rawValue.trim().replace(/^(?:"([\s\S]*)"|'([\s\S]*)')$/, "$1$2");
@@ -85,9 +63,8 @@ function frontmatterFields(text) {
 
 function checkComponentPath(root, pluginRoot, manifest, key, label, errors) {
   const value = manifest[key];
-  if (value === undefined) return [];
+  if (value === undefined) return;
   const values = Array.isArray(value) ? value : [value];
-  const paths = [];
   for (const item of values) {
     if (typeof item !== "string" || !item.startsWith("./")) {
       errors.push(`${label} ${key} must use a relative path beginning with ./`);
@@ -95,12 +72,11 @@ function checkComponentPath(root, pluginRoot, manifest, key, label, errors) {
     }
     const target = resolve(pluginRoot, item);
     if (!isWithin(pluginRoot, target) || !existsSync(target)) {
+      // `skills/` is materialized only when the plugin source is built.
+      if (key === "skills" && item === "./skills/" && isWithin(pluginRoot, target)) continue;
       errors.push(`${label} ${key} points to a missing or out-of-package path: ${item}`);
-      continue;
     }
-    paths.push(target);
   }
-  return paths;
 }
 
 function checkAsset(root, pluginRoot, value, label, errors) {
@@ -115,38 +91,22 @@ function checkAsset(root, pluginRoot, value, label, errors) {
   }
 }
 
-function findSkills(root, pluginRoot, skillRoots, pluginName, errors) {
-  const skills = new Map();
-  for (const skillRoot of skillRoots) {
-    if (!statSync(skillRoot).isDirectory()) {
-      errors.push(`${repoPath(root, skillRoot)} must be a directory`);
-      continue;
-    }
-    for (const entry of readdirSync(skillRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const skillPath = join(skillRoot, entry.name, "SKILL.md");
-      if (!existsSync(skillPath)) {
-        errors.push(`${repoPath(root, skillPath)} is missing`);
-        continue;
-      }
-      const fields = frontmatterFields(readFileSync(skillPath, "utf8"));
-      if (!fields) {
-        errors.push(`${repoPath(root, skillPath)} is missing YAML frontmatter`);
-        continue;
-      }
-      if (fields.name !== entry.name) {
-        errors.push(`${repoPath(root, skillPath)} name must match its folder (${entry.name})`);
-      }
-      if (!fields.description) errors.push(`${repoPath(root, skillPath)} is missing a description`);
-      skills.set(entry.name, {
-        name: entry.name,
-        description: fields.description || "",
-        path: repoPath(root, join(skillRoot, entry.name)),
-      });
-    }
+function skillDetails(root, name, errors) {
+  const directory = join(root, "skills", name);
+  const pkg = readJson(root, join(directory, "package.json"), errors, true);
+  const skillPath = join(directory, "skill", name, "SKILL.md");
+  if (!existsSync(skillPath)) {
+    errors.push(`${repoPath(root, skillPath)} is missing`);
+    return { name, description: "", path: repoPath(root, directory) };
   }
-  if (skills.size === 0) errors.push(`plugins/${pluginName} must include at least one skill with SKILL.md`);
-  return [...skills.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const fields = frontmatterFields(readFileSync(skillPath, "utf8"));
+  if (!fields) errors.push(`${repoPath(root, skillPath)} is missing YAML frontmatter`);
+  else {
+    if (fields.name !== name) errors.push(`${repoPath(root, skillPath)} name must match its folder (${name})`);
+    if (!fields.description) errors.push(`${repoPath(root, skillPath)} is missing a description`);
+  }
+  if (pkg && pkg.name !== name) errors.push(`${repoPath(root, join(directory, "package.json"))} name must match ${name}`);
+  return { name, description: fields?.description || pkg?.description || "", path: repoPath(root, join(directory, "skill", name)) };
 }
 
 function hasForbiddenEnvironmentFile(directory) {
@@ -155,15 +115,33 @@ function hasForbiddenEnvironmentFile(directory) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
       if (hasForbiddenEnvironmentFile(path)) return true;
-    } else if (entry.name === ".env" || (entry.name.startsWith(".env.") && entry.name !== ".env.example")) {
-      return true;
-    }
+    } else if (entry.name === ".env" || (entry.name.startsWith(".env.") && entry.name !== ".env.example")) return true;
   }
   return false;
 }
 
 function validatePlugin(root, pluginRoot, errors) {
   const pluginName = pluginRoot.split(sep).at(-1);
+  const sourcePath = join(pluginRoot, "plugin.json");
+  const source = readJson(root, sourcePath, errors, true);
+  if (!source) return null;
+  if (existsSync(join(pluginRoot, "skills"))) errors.push(`${repoPath(root, pluginRoot)} must link skill packages by name and keep skill files in /skills`);
+  if (source.name !== pluginName) errors.push(`${repoPath(root, sourcePath)} name must match its plugin folder (${pluginName})`);
+  if (typeof source.version !== "string" || !VERSION_RE.test(source.version)) errors.push(`${repoPath(root, sourcePath)} version must be semantic versioning`);
+  if (!Array.isArray(source.skills) || source.skills.length === 0) errors.push(`${repoPath(root, sourcePath)} must list one or more skill package names`);
+  const skillNames = Array.isArray(source.skills) ? source.skills : [];
+  const seen = new Set();
+  const skills = [];
+  for (const name of skillNames) {
+    if (typeof name !== "string" || !NAME_RE.test(name)) {
+      errors.push(`${repoPath(root, sourcePath)} skills must contain kebab-case package names`);
+      continue;
+    }
+    if (seen.has(name)) errors.push(`${repoPath(root, sourcePath)} contains duplicate skill link ${name}`);
+    seen.add(name);
+    skills.push(skillDetails(root, name, errors));
+  }
+
   const manifests = new Map();
   for (const surface of SURFACES) {
     const manifestPath = join(pluginRoot, surface.manifest);
@@ -171,54 +149,27 @@ function validatePlugin(root, pluginRoot, errors) {
     const manifest = readJson(root, manifestPath, errors, true);
     if (!manifest) continue;
     manifests.set(surface.name, { manifest, surface, path: manifestPath });
-    if (manifest.name !== pluginName) {
-      errors.push(`${repoPath(root, manifestPath)} name must match its plugin folder (${pluginName})`);
-    }
-    if (typeof manifest.description !== "string" || !manifest.description.trim()) {
-      errors.push(`${repoPath(root, manifestPath)} description is required`);
-    }
-    if (typeof manifest.version !== "string" || !VERSION_RE.test(manifest.version)) {
-      errors.push(`${repoPath(root, manifestPath)} version must be semantic versioning`);
-    }
-    if (manifest.skills === undefined) {
-      errors.push(`${repoPath(root, manifestPath)} must declare a skills path`);
-    }
-    for (const component of ["commands", "rules"]) {
-      checkComponentPath(root, pluginRoot, manifest, component, repoPath(root, manifestPath), errors);
-    }
+    if (manifest.name !== pluginName) errors.push(`${repoPath(root, manifestPath)} name must match its plugin folder (${pluginName})`);
+    if (typeof manifest.description !== "string" || !manifest.description.trim()) errors.push(`${repoPath(root, manifestPath)} description is required`);
+    if (manifest.version !== source.version) errors.push(`${repoPath(root, manifestPath)} version must match plugin.json (${source.version})`);
+    if (manifest.skills !== "./skills/") errors.push(`${repoPath(root, manifestPath)} skills must point to the generated ./skills/ directory`);
+    for (const component of ["commands", "rules"]) checkComponentPath(root, pluginRoot, manifest, component, repoPath(root, manifestPath), errors);
     checkAsset(root, pluginRoot, manifest.logo, `${repoPath(root, manifestPath)} logo`, errors);
     checkAsset(root, pluginRoot, manifest.interface?.logo, `${repoPath(root, manifestPath)} interface.logo`, errors);
     checkAsset(root, pluginRoot, manifest.interface?.composerIcon, `${repoPath(root, manifestPath)} interface.composerIcon`, errors);
   }
-
-  if (manifests.size === 0) {
-    errors.push(`plugins/${pluginName} has no supported plugin manifest`);
-    return null;
-  }
-  const versions = new Set([...manifests.values()].map(({ manifest }) => manifest.version));
-  if (versions.size !== 1 || versions.has(undefined)) {
-    errors.push(`plugins/${pluginName} has mismatched versions across its plugin manifests`);
-  }
-
-  const skillRoots = new Set();
-  for (const { manifest, path } of manifests.values()) {
-    const paths = checkComponentPath(root, pluginRoot, manifest, "skills", repoPath(root, path), errors);
-    paths.forEach((skillRoot) => skillRoots.add(skillRoot));
-  }
-  const skills = findSkills(root, pluginRoot, [...skillRoots], pluginName, errors);
-  if (hasForbiddenEnvironmentFile(pluginRoot)) {
-    errors.push(`plugins/${pluginName} contains a secret environment file; only .env.example is allowed`);
-  }
+  if (manifests.size === 0) errors.push(`plugins/${pluginName} has no supported plugin manifest`);
+  if (skills.length !== skillNames.length) errors.push(`${repoPath(root, sourcePath)} contains invalid skill links`);
+  if (hasForbiddenEnvironmentFile(pluginRoot)) errors.push(`plugins/${pluginName} contains a secret environment file; only .env.example is allowed`);
 
   const preferred = manifests.get("Codex") || manifests.values().next().value;
-  const manifest = preferred.manifest;
   return {
     name: pluginName,
-    displayName: manifest.interface?.displayName || manifest.displayName || pluginName,
-    version: manifest.version,
-    description: manifest.description,
+    displayName: source.displayName || preferred?.manifest.interface?.displayName || preferred?.manifest.displayName || pluginName,
+    version: source.version,
+    description: source.description || preferred?.manifest.description || "",
     surfaces: [...manifests.keys()].sort(),
-    skills,
+    skills: skills.sort((a, b) => a.name.localeCompare(b.name)),
     manifests,
   };
 }
@@ -226,21 +177,16 @@ function validatePlugin(root, pluginRoot, errors) {
 function validateMarketplace(root, surface, plugins, errors) {
   const path = join(root, surface.marketplace);
   if (!existsSync(path)) {
-    if (plugins.some((plugin) => plugin.manifests.has(surface.name))) {
-      errors.push(`${surface.marketplace} is required for plugins that support ${surface.name}`);
-    }
+    if (plugins.some((plugin) => plugin.manifests.has(surface.name))) errors.push(`${surface.marketplace} is required for plugins that support ${surface.name}`);
     return;
   }
   const marketplace = readJson(root, path, errors, true);
   if (!marketplace) return;
-  if (marketplace.name !== MARKETPLACE_NAME) {
-    errors.push(`${surface.marketplace} name must be ${MARKETPLACE_NAME}`);
-  }
+  if (marketplace.name !== MARKETPLACE_NAME) errors.push(`${surface.marketplace} name must be ${MARKETPLACE_NAME}`);
   if (!Array.isArray(marketplace.plugins)) {
     errors.push(`${surface.marketplace} plugins must be an array`);
     return;
   }
-
   const entries = new Map();
   for (const entry of marketplace.plugins) {
     if (!entry || typeof entry.name !== "string" || !entry.name) {
@@ -254,34 +200,23 @@ function validateMarketplace(root, surface, plugins, errors) {
       errors.push(`${surface.marketplace} lists ${entry.name}, but its ${surface.name} manifest is missing`);
       continue;
     }
-    const expectedPath = `./plugins/${entry.name}`;
+    const expectedPath = `./dist/plugins/${entry.name}`;
     if (surface.sourceType === "codex") {
-      if (entry.source?.source !== "local" || entry.source?.path !== expectedPath) {
-        errors.push(`${surface.marketplace} entry ${entry.name} source must be local at ${expectedPath}`);
-      }
-    } else if (entry.source !== expectedPath) {
-      errors.push(`${surface.marketplace} entry ${entry.name} source must be ${expectedPath}`);
-    }
-    const version = plugin.manifests.get(surface.name).manifest.version;
-    if (entry.version !== version) errors.push(`${surface.marketplace} entry ${entry.name} version must match ${version}`);
+      if (entry.source?.source !== "local" || entry.source?.path !== expectedPath) errors.push(`${surface.marketplace} entry ${entry.name} source must be local at ${expectedPath}`);
+    } else if (entry.source !== expectedPath) errors.push(`${surface.marketplace} entry ${entry.name} source must be ${expectedPath}`);
+    if (entry.version !== plugin.version) errors.push(`${surface.marketplace} entry ${entry.name} version must match ${plugin.version}`);
   }
-
   for (const plugin of plugins) {
-    if (plugin.manifests.has(surface.name) && !entries.has(plugin.name)) {
-      errors.push(`${surface.marketplace} is missing ${plugin.name}`);
-    }
+    if (plugin.manifests.has(surface.name) && !entries.has(plugin.name)) errors.push(`${surface.marketplace} is missing ${plugin.name}`);
   }
 }
 
 export function inspectPlugins(root) {
   const errors = [];
   const pluginsRoot = join(root, "plugins");
-  if (!existsSync(pluginsRoot) || !statSync(pluginsRoot).isDirectory()) {
-    return { plugins: [], errors: ["plugins/ directory is missing"] };
-  }
+  if (!existsSync(pluginsRoot) || !statSync(pluginsRoot).isDirectory()) return { plugins: [], errors: ["plugins/ directory is missing"] };
   const directories = readdirSync(pluginsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory());
   if (directories.length === 0) errors.push("plugins/ must contain at least one plugin directory");
-
   const plugins = [];
   for (const entry of directories) {
     const pluginRoot = join(pluginsRoot, entry.name);
@@ -297,23 +232,13 @@ export function renderCatalog(plugins) {
   const catalog = {
     name: MARKETPLACE_NAME,
     plugins: plugins.map(({ name, displayName, version, description, surfaces, skills }) => ({
-      name,
-      displayName,
-      version,
-      description,
-      surfaces,
-      skills: skills.map(({ name: skillName, description: skillDescription, path }) => ({
-        name: skillName,
-        description: skillDescription,
-        path,
-      })),
+      name, displayName, version, description, surfaces,
+      skills: skills.map(({ name: skillName, description: skillDescription, path }) => ({ name: skillName, description: skillDescription, path })),
     })),
   };
   const markdown = [
-    `# ${MARKETPLACE_NAME}`,
-    "",
-    "Available plugin bundles and their skills. Generated from plugin manifests and `SKILL.md` frontmatter; edit the source files and run `npm run catalog:generate`.",
-    "",
+    `# ${MARKETPLACE_NAME}`, "",
+    "Available plugin bundles and their linked standalone skills. Generated from plugin manifests and skill package metadata; edit the source files and run `npm run catalog:generate`.", "",
   ];
   for (const plugin of catalog.plugins) {
     markdown.push(`## ${plugin.displayName} (${plugin.version})`, "", plugin.description, "", `Surfaces: ${plugin.surfaces.join(", ")}`, "", "| Skill | Description |", "| --- | --- |");

@@ -6,10 +6,10 @@
   "plugins": [
     {
       "name": "webex-connect-ai",
-      "version": "0.2.39",
+      "version": "0.3.0-beta.1",
       "source": {
         "source": "local",
-        "path": "./plugins/webex-connect-ai"
+        "path": "./dist/plugins/webex-connect-ai"
       },
       "policy": {
         "installation": "AVAILABLE",

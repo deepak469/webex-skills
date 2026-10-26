@@ -4,8 +4,8 @@
     {
       "name": "webex-connect-ai",
       "displayName": "Webex Connect AI",
-      "version": "0.2.39",
-      "description": "Webex Connect AI skills for digital-asset lifecycle operations, digital-channel messaging, live chat widgets, Android and iOS push plus in-app messaging demos, setup workflows, and production-ready API integrations.",
+      "version": "0.3.0-beta.1",
+      "description": "Webex Connect skills for tenant setup, digital-channel messaging, asset management, webhooks, and SDK app development.",
       "surfaces": [
         "Claude Code",
         "Codex",
@@ -15,97 +15,97 @@
         {
           "name": "webex-connect-setup",
           "description": "Configure Webex Connect Sandbox or Production tenant access, regional API endpoints, credentials, Digital Asset API prerequisites, and the region-matched Production SMS/Email MCP in a local .env or secure MCP host. Use before API-backed workflows when setup is missing or incomplete; SDK app and widget builders do not require this setup.",
-          "path": "plugins/webex-connect-ai/skills/webex-connect-setup"
+          "path": "skills/webex-connect-setup/skill/webex-connect-setup"
         },
         {
           "name": "webexconnect-android-push-inapp-messaging-builder",
           "description": "Build or repair native Android apps that use the Webex Connect SDK for Push Notifications or In-App Messaging, including registration, chat, notifications, and QA.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-android-push-inapp-messaging-builder"
+          "path": "skills/webexconnect-android-push-inapp-messaging-builder/skill/webexconnect-android-push-inapp-messaging-builder"
         },
         {
           "name": "webexconnect-apple-messages-for-business-sendmessage",
           "description": "Build and validate Webex Connect Apple Messages for Business API v1 requests for text, rich messages, attachments, callbacks, and delivery handling.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-apple-messages-for-business-sendmessage"
+          "path": "skills/webexconnect-apple-messages-for-business-sendmessage/skill/webexconnect-apple-messages-for-business-sendmessage"
         },
         {
           "name": "webexconnect-contact-policy",
           "description": "Use Webex Connect Contact Policy APIs to manage consent, opt-in and opt-out, channel checks, frequency caps, and message policy enforcement.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-contact-policy"
+          "path": "skills/webexconnect-contact-policy/skill/webexconnect-contact-policy"
         },
         {
           "name": "webexconnect-digital-asset-creation",
           "description": "Create, retrieve, and update Webex Connect Chat, Email, Facebook Messenger, or WhatsApp digital assets using the documented operation schema, tenant-region routing, and confirmation before mutations.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-digital-asset-creation"
+          "path": "skills/webexconnect-digital-asset-creation/skill/webexconnect-digital-asset-creation"
         },
         {
           "name": "webexconnect-email-sendmessage",
           "description": "Build, validate, or send Webex Connect Email through Send Message API v2 or the configured Email MCP, including sender discovery, recipients, content, callbacks, and receipts.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-email-sendmessage"
+          "path": "skills/webexconnect-email-sendmessage/skill/webexconnect-email-sendmessage"
         },
         {
           "name": "webexconnect-facebook-messenger-sendmessage",
           "description": "Build and validate Webex Connect Facebook Messenger API v1 messages for Page-scoped recipients, text, attachments, interactive replies, and callbacks.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-facebook-messenger-sendmessage"
+          "path": "skills/webexconnect-facebook-messenger-sendmessage/skill/webexconnect-facebook-messenger-sendmessage"
         },
         {
           "name": "webexconnect-ios-push-inapp-messaging-builder",
           "description": "Build or repair native iOS apps that use the Webex Connect SDK for Push Notifications or In-App Messaging, including registration, chat, notifications, and QA.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-ios-push-inapp-messaging-builder"
+          "path": "skills/webexconnect-ios-push-inapp-messaging-builder/skill/webexconnect-ios-push-inapp-messaging-builder"
         },
         {
           "name": "webexconnect-livechat-inapp-sendmessage",
           "description": "Build and validate Webex Connect Messaging API v1 requests for Live Chat, In-App Messaging, notifications, threads, and callbacks.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-livechat-inapp-sendmessage"
+          "path": "skills/webexconnect-livechat-inapp-sendmessage/skill/webexconnect-livechat-inapp-sendmessage"
         },
         {
           "name": "webexconnect-livechat-widget",
           "description": "Build or troubleshoot a browser Live Chat widget using the Webex Connect JavaScript SDK, including setup, registration, threads, messaging, and events.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-livechat-widget"
+          "path": "skills/webexconnect-livechat-widget/skill/webexconnect-livechat-widget"
         },
         {
           "name": "webexconnect-mms-sendmessage",
           "description": "Build and validate Webex Connect MMS Send Message API v2 requests for recipients, attachments, fallback text, receipts, and callbacks.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-mms-sendmessage"
+          "path": "skills/webexconnect-mms-sendmessage/skill/webexconnect-mms-sendmessage"
         },
         {
           "name": "webexconnect-push-sendmessage",
           "description": "Build and validate Webex Connect Push Messaging API v1 requests for registered users and devices, platform payloads, notifications, and callbacks.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-push-sendmessage"
+          "path": "skills/webexconnect-push-sendmessage/skill/webexconnect-push-sendmessage"
         },
         {
           "name": "webexconnect-rcs-sendmessage",
           "description": "Build and validate Webex Connect RCS Send Message API v2 requests for capability checks, rich content, templates, and SMS fallback.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-rcs-sendmessage"
+          "path": "skills/webexconnect-rcs-sendmessage/skill/webexconnect-rcs-sendmessage"
         },
         {
           "name": "webexconnect-sandbox",
           "description": "Configure and use the Webex Connect Sandbox for supported SMS, Voice, or WhatsApp API tests, verified recipients, and sandbox-specific limits.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-sandbox"
+          "path": "skills/webexconnect-sandbox/skill/webexconnect-sandbox"
         },
         {
           "name": "webexconnect-sendmessage",
           "description": "Route an outbound Webex Connect message to the correct channel skill and API family, using shared setup, Contact Policy, and webhook guidance when required.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-sendmessage"
+          "path": "skills/webexconnect-sendmessage/skill/webexconnect-sendmessage"
         },
         {
           "name": "webexconnect-sms-sendmessage",
           "description": "Build, validate, or send Webex Connect SMS through Send Message API v2 or the configured SMS MCP, including sender discovery, recipients, scheduling, receipts, and callbacks.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-sms-sendmessage"
+          "path": "skills/webexconnect-sms-sendmessage/skill/webexconnect-sms-sendmessage"
         },
         {
           "name": "webexconnect-voice-sendmessage",
           "description": "Build and validate Webex Connect Voice API v1 and documented Send Message API v2 voice requests for outbound calls, text-to-speech, media, callbacks, and call status.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-voice-sendmessage"
+          "path": "skills/webexconnect-voice-sendmessage/skill/webexconnect-voice-sendmessage"
         },
         {
           "name": "webexconnect-webhooks-events",
           "description": "Build and troubleshoot Webex Connect webhook receivers, callback verification, inbound events, Event API requests, retries, and data streams.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-webhooks-events"
+          "path": "skills/webexconnect-webhooks-events/skill/webexconnect-webhooks-events"
         },
         {
           "name": "webexconnect-whatsapp-sendmessage",
           "description": "Build and validate Webex Connect WhatsApp API v1 messages for session replies, approved templates, media, interactive content, and callbacks.",
-          "path": "plugins/webex-connect-ai/skills/webexconnect-whatsapp-sendmessage"
+          "path": "skills/webexconnect-whatsapp-sendmessage/skill/webexconnect-whatsapp-sendmessage"
         }
       ]
     }

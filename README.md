@@ -7,7 +7,8 @@ Agent skills and plugins for building with Webex, for Codex, GitHub Copilot, Cla
 | Package | Description | Details |
 | --- | --- | --- |
 | [webex-api-knowledge](skills/webex-api-knowledge/) | Grounded Webex Public API knowledge for building integrations | [releases](skills/webex-api-knowledge/release/) |
-| [webex-connect-ai](plugins/webex-connect-ai/) | Codex, Claude Code, and Cursor plugin with 19 Webex Connect skills | [plugin files](plugins/webex-connect-ai/) |
+| [Webex Connect skills](PLUGINS.md) | 19 individually versioned and installable Webex Connect skill packages | [skill workspaces](skills/) |
+| [webex-connect-ai](plugins/webex-connect-ai/) | Plugin recipe linking 19 independently packaged Webex Connect skills | [plugin source](plugins/webex-connect-ai/) |
 
 See each skill's README for installation and usage.
 
@@ -26,16 +27,20 @@ scripts/                    shared repo tooling (validate, detect changes, chang
 .agents/plugins/            local Codex plugin marketplace
 .claude-plugin/             local Claude Code plugin marketplace
 .cursor-plugin/             local Cursor plugin marketplace
-plugins/webex-connect-ai/   installable Webex Connect AI plugin
+plugins/webex-connect-ai/   plugin recipe, host manifests, commands, and assets
+dist/plugins/<name>/         generated, self-contained plugin package (ignored)
 .github/workflows/          CI verification and release packaging
 ```
 
 Each skill is an npm workspace, so its `package.json` owns its version and packaging.
 
-The `webex-connect-ai` plugin is a separate installable package. Its 19 skills,
-commands, rules, manifests, and branding live under `plugins/webex-connect-ai/`.
-The generated [plugin catalog](PLUGINS.md) lists plugins and their skills.
-Codex discovers plugins through `.agents/plugins/marketplace.json`.
+The 19 Webex Connect skills are individual packages under `skills/`. The
+`webex-connect-ai` plugin recipe selects them by package name in
+`plugins/webex-connect-ai/plugin.json`. `npm run plugin:build` assembles the
+selected skills with plugin-specific commands, rules, manifests, and branding
+into a self-contained folder under ignored `dist/plugins/`. The generated
+[plugin catalog](PLUGINS.md) lists the plugin and its skill links. Codex
+discovers the built package through `.agents/plugins/marketplace.json`.
 
 ## Development
 
@@ -46,18 +51,18 @@ npm run validate                                  # validate skills and the plug
 npm test                                          # test all skills
 npm test --workspace skills/<name>                # test one skill
 node scripts/package-skill.mjs <name> --dry-run   # preview a package
+npm run plugin:build                              # assemble installable plugin packages
 npm run catalog:generate                          # refresh PLUGINS.md and catalog.json
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for adding plugins and keeping their
 manifests, marketplaces, and catalog in sync.
 
-Plugin changes are checked by the same `npm run validate` command. From this
-repository, install the local Codex plugin with:
+After building, install the local Codex plugin from this repository with:
 
 ```sh
 codex plugin marketplace add .
-codex plugin add webex-connect-ai@webex-connect-ai
+codex plugin add webex-connect-ai@webex-skills
 ```
 
 ## CI

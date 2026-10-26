@@ -1,44 +1,61 @@
 # Contributing
 
-This repository hosts multiple Webex agent skills and installable plugin
-bundles. Each plugin owns its skills, assets, scripts, and any platform-specific
-manifests under `plugins/<plugin-name>/`.
+This repository hosts independently packaged agent skills and installable
+plugin bundles assembled from those skills.
 
-## Add a plugin
+## Add a skill
 
-1. Create `plugins/<plugin-name>/` and put each skill under
-   `skills/<skill-name>/SKILL.md`. Match the skill's frontmatter `name` to its
-   directory and provide a concise, trigger-focused `description`.
-2. Add manifests for the agent surfaces the plugin supports. The matching
-   repository marketplace catalogs are `.agents/plugins/marketplace.json`
-   (Codex), `.claude-plugin/marketplace.json` (Claude Code),
+1. Create `skills/<skill-name>/` as an independent npm workspace. Follow the
+   existing package pattern: `README.md`, `package.json`, `skill/<skill-name>/SKILL.md`,
+   installer and tests, and `release/CHANGELOG.md`.
+2. Keep scripts, references, templates, and assets needed by the skill under
+   `skill/<skill-name>/`. The package folder name and skill frontmatter name
+   must match.
+3. Add the skill to `.github/workflows/publish.yml` so it can be independently
+   released. Run `npm run validate`, `npm test`, and
+   `npm run pack:check --workspace skills/<skill-name>`.
+
+## Add or update a plugin
+
+1. Create `plugins/<plugin-name>/` with a `plugin.json` source recipe. Its
+   `skills` array links to package names from `/skills`; do not add skill source
+   folders here.
+2. Add manifests only for supported agent surfaces. Repository marketplace
+   catalogs are `.agents/plugins/marketplace.json` (Codex),
+   `.claude-plugin/marketplace.json` (Claude Code),
    `.cursor-plugin/marketplace.json` (Cursor), and
-   `.windsurf-plugin/marketplace.json` (Windsurf).
-3. Keep the plugin version equal in each surface manifest and marketplace
-   entry. Marketplace catalogs share the repository identity `webex-skills`.
-4. Regenerate the human and machine-readable indexes and run checks:
+   `.windsurf-plugin/marketplace.json` (Windsurf). Their entries point at the
+   generated `./dist/plugins/<plugin-name>` package.
+3. Keep versions synchronized in the plugin recipe, surface manifests, and
+   marketplace entries. Marketplace catalogs share the repository identity
+   `webex-skills`.
+4. Build output is generated and ignored by Git. `npm run plugin:build`
+   resolves the recipe's skill names and assembles a self-contained plugin in
+   `dist/plugins/` for installation or release.
+5. Regenerate indexes and run all checks:
 
    ```sh
    npm run catalog:generate
    npm run validate
+   npm run plugin:build
    node --test tests/plugins.test.mjs
    npm test
    ```
 
-The catalog generator discovers plugins and skills from their manifests and
-`SKILL.md` frontmatter. Do not edit `PLUGINS.md` or `catalog.json` by hand.
+Do not edit `PLUGINS.md` or `catalog.json` by hand. The generator reads plugin
+recipes and the linked skill package metadata.
 
 ## Change an existing plugin
 
-Keep implementation resources with their owning skill. When a change affects a
-plugin's published behavior, update its version consistently across all
-manifests and marketplace entries. Update any plugin-specific README or
-commands that describe the changed behavior, regenerate the catalog, and run
-the checks above.
+Keep implementation resources with the skill package that owns them. Update a
+plugin's skill links when its composition changes. When published behavior
+changes, update the plugin version consistently across its recipe, supported
+surface manifests, and marketplace entries. Update plugin-specific docs or
+commands, regenerate the catalog, and run the checks above.
 
 ## Existing standalone skills
 
-The `skills/<name>/` npm workspaces are independently packaged skills with
-their own tests and release workflows. Plugin-only changes should stay under
-`plugins/` and the shared plugin tooling; avoid changing a standalone skill's
-source or release files unless that skill is part of the requested work.
+Each `skills/<name>/` directory is independently versioned and releaseable.
+Plugin-only changes should stay under `plugins/` and shared plugin tooling;
+avoid changing a standalone skill's source or release files unless it is part
+of the requested work.

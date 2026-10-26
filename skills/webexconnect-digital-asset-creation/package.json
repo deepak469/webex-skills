@@ -1,0 +1,26 @@
+{
+  "name": "webexconnect-digital-asset-creation",
+  "version": "0.1.0-beta.1",
+  "description": "Independently installable Webex Connect skill for webexconnect digital asset creation.",
+  "type": "module",
+  "bin": {
+    "webexconnect-digital-asset-creation": "scripts/install-skill.mjs"
+  },
+  "files": [
+    "skill/webexconnect-digital-asset-creation/",
+    "scripts/install-skill.mjs",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/skill.test.mjs",
+    "pack:check": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "agent-skill",
+    "webex-connect"
+  ],
+  "license": "UNLICENSED"
+}

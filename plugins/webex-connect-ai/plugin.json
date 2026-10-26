@@ -1,0 +1,27 @@
+{
+  "name": "webex-connect-ai",
+  "displayName": "Webex Connect AI",
+  "version": "0.3.0-beta.1",
+  "description": "Webex Connect skills for tenant setup, digital-channel messaging, asset management, webhooks, and SDK app development.",
+  "skills": [
+    "webex-connect-setup",
+    "webexconnect-android-push-inapp-messaging-builder",
+    "webexconnect-apple-messages-for-business-sendmessage",
+    "webexconnect-contact-policy",
+    "webexconnect-digital-asset-creation",
+    "webexconnect-email-sendmessage",
+    "webexconnect-facebook-messenger-sendmessage",
+    "webexconnect-ios-push-inapp-messaging-builder",
+    "webexconnect-livechat-inapp-sendmessage",
+    "webexconnect-livechat-widget",
+    "webexconnect-mms-sendmessage",
+    "webexconnect-push-sendmessage",
+    "webexconnect-rcs-sendmessage",
+    "webexconnect-sandbox",
+    "webexconnect-sendmessage",
+    "webexconnect-sms-sendmessage",
+    "webexconnect-voice-sendmessage",
+    "webexconnect-webhooks-events",
+    "webexconnect-whatsapp-sendmessage"
+  ]
+}

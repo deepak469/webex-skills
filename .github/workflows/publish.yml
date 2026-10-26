@@ -9,6 +9,25 @@ on:
         type: choice
         options:
           - webex-api-knowledge
+          - webex-connect-setup
+          - webexconnect-android-push-inapp-messaging-builder
+          - webexconnect-apple-messages-for-business-sendmessage
+          - webexconnect-contact-policy
+          - webexconnect-digital-asset-creation
+          - webexconnect-email-sendmessage
+          - webexconnect-facebook-messenger-sendmessage
+          - webexconnect-ios-push-inapp-messaging-builder
+          - webexconnect-livechat-inapp-sendmessage
+          - webexconnect-livechat-widget
+          - webexconnect-mms-sendmessage
+          - webexconnect-push-sendmessage
+          - webexconnect-rcs-sendmessage
+          - webexconnect-sandbox
+          - webexconnect-sendmessage
+          - webexconnect-sms-sendmessage
+          - webexconnect-voice-sendmessage
+          - webexconnect-webhooks-events
+          - webexconnect-whatsapp-sendmessage
       dry-run:
         description: Validate and pack without committing the package
         required: false
