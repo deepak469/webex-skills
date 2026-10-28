@@ -28,7 +28,7 @@ jobs:
           echo "Changed skills: $skills"
           echo "skills=$skills" >> "$GITHUB_OUTPUT"
           if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            plugin_files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | grep -E '^(plugins/|\.agents/plugins/|\.claude-plugin/|\.cursor-plugin/|\.windsurf-plugin/|scripts/(validate-plugin|generate-catalog|build-plugins)\.mjs$|scripts/lib/plugins\.mjs$|catalog\.json$|PLUGINS\.md$|package\.json$)' || true)"
+            plugin_files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" | grep -E '^(plugins/|plugin-packages/|skills/|\.agents/plugins/|\.claude-plugin/|\.cursor-plugin/|\.windsurf-plugin/|scripts/(validate-plugin|validate-plugin-versions|generate-catalog|build-plugins|package-plugin)\.mjs$|scripts/lib/plugins\.mjs$|catalog\.json$|PLUGINS\.md$|package\.json$)' || true)"
             if [[ -n "$plugin_files" ]]; then plugin=true; else plugin=false; fi
           else
             plugin=true
@@ -48,6 +48,8 @@ jobs:
       SKILL: ${{ matrix.skill }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
@@ -61,11 +63,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - run: node scripts/validate-plugin.mjs
       - run: npm run plugin:build
+      - name: Check committed plugin bundles
+        run: |
+          if [[ -n "$(git status --porcelain --untracked-files=all -- plugin-packages)" ]]; then
+            git status --short -- plugin-packages
+            echo "Committed plugin bundles are stale. Run npm run plugin:build and commit the generated output."
+            exit 1
+          fi
+      - name: Check plugin version bumps
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node scripts/validate-plugin-versions.mjs "$BASE_SHA" "$HEAD_SHA"
+      - run: npm run plugin:package -- webex-connect-ai --dry-run
       - run: node --test tests/plugins.test.mjs
 
   # Single stable check name for branch protection, regardless of which skills ran.

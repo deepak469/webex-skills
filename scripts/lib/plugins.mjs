@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export const MARKETPLACE_NAME = "webex-skills";
+export const PLUGIN_PACKAGE_DIRECTORY = "plugin-packages";
 
 export const SURFACES = [
   { name: "Codex", manifest: ".codex-plugin/plugin.json", marketplace: ".agents/plugins/marketplace.json", sourceType: "codex" },
@@ -106,7 +107,8 @@ function skillDetails(root, name, errors) {
     if (!fields.description) errors.push(`${repoPath(root, skillPath)} is missing a description`);
   }
   if (pkg && pkg.name !== name) errors.push(`${repoPath(root, join(directory, "package.json"))} name must match ${name}`);
-  return { name, description: fields?.description || pkg?.description || "", path: repoPath(root, join(directory, "skill", name)) };
+  if (pkg && !VERSION_RE.test(pkg.version || "")) errors.push(`${repoPath(root, join(directory, "package.json"))} has an invalid or missing version`);
+  return { name, version: pkg?.version || "", description: fields?.description || pkg?.description || "", path: repoPath(root, join(directory, "skill", name)) };
 }
 
 function hasForbiddenEnvironmentFile(directory) {
@@ -200,7 +202,7 @@ function validateMarketplace(root, surface, plugins, errors) {
       errors.push(`${surface.marketplace} lists ${entry.name}, but its ${surface.name} manifest is missing`);
       continue;
     }
-    const expectedPath = `./dist/plugins/${entry.name}`;
+    const expectedPath = `./${PLUGIN_PACKAGE_DIRECTORY}/${entry.name}`;
     if (surface.sourceType === "codex") {
       if (entry.source?.source !== "local" || entry.source?.path !== expectedPath) errors.push(`${surface.marketplace} entry ${entry.name} source must be local at ${expectedPath}`);
     } else if (entry.source !== expectedPath) errors.push(`${surface.marketplace} entry ${entry.name} source must be ${expectedPath}`);

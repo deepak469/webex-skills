@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Live Chat/In-App"
+  short_description: "In-app threads, messages, quick replies"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-livechat-inapp-sendmessage to build a Webex Connect Live Chat or In-App message payload."

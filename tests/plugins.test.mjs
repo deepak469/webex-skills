@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { inspectPlugins, renderCatalog } from "../scripts/lib/plugins.mjs";
+import { pluginsMissingVersionBumps } from "../scripts/lib/plugin-versions.mjs";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "webex-skills-plugins-"));
@@ -29,7 +30,7 @@ function addPlugin(root, name, skills, surfaces = ["codex"], version = "1.0.0") 
   for (const skill of skills) {
     const directory = join(root, "skills", skill);
     mkdirSync(join(directory, "skill", skill), { recursive: true });
-    writeFileSync(join(directory, "package.json"), JSON.stringify({ name: skill }));
+    writeFileSync(join(directory, "package.json"), JSON.stringify({ name: skill, version: "1.0.0" }));
     writeFileSync(join(directory, "skill", skill, "SKILL.md"), `---\nname: ${skill}\ndescription: >\n  Guidance for ${skill}.\n---\n`);
   }
 }
@@ -42,8 +43,8 @@ function writeMarketplace(root, surface, pluginNames) {
     name,
     version: "1.0.0",
     source: surface === "codex"
-      ? { source: "local", path: `./dist/plugins/${name}` }
-      : `./dist/plugins/${name}`,
+      ? { source: "local", path: `./plugin-packages/${name}` }
+      : `./plugin-packages/${name}`,
   }));
   writeFileSync(marketplacePath, `${JSON.stringify({ name: "webex-skills", plugins }, null, 2)}\n`);
 }
@@ -93,6 +94,35 @@ test("reports version drift between a plugin recipe and its platform manifest", 
   assert.ok(result.errors.some((error) => error.includes("version must match plugin.json")));
 });
 
+test("requires a plugin version bump when linked skill content changes", () => {
+  const previous = [{ name: "alpha", version: "1.0.0", skills: ["alpha-one"] }];
+  const unchanged = [{ name: "alpha", version: "1.0.0", skills: ["alpha-one"] }];
+  assert.equal(pluginsMissingVersionBumps(["skills/alpha-one/skill/alpha-one/SKILL.md"], previous, unchanged).length, 1);
+  assert.equal(pluginsMissingVersionBumps(["plugins/alpha/commands/send.md"], previous, unchanged).length, 1);
+  const bumped = [{ ...unchanged[0], version: "1.0.1" }];
+  assert.deepEqual(pluginsMissingVersionBumps(["skills/alpha-one/package.json"], previous, bumped), []);
+  assert.deepEqual(pluginsMissingVersionBumps(["skills/unlinked/skill/unlinked/SKILL.md"], previous, unchanged), []);
+  assert.deepEqual(pluginsMissingVersionBumps(["plugins/alpha/release/CHANGELOG.md"], previous, unchanged), []);
+});
+
+test("standalone Webex Connect installs use private GitHub release packages", () => {
+  const root = new URL("../", import.meta.url).pathname;
+  const skillsRoot = join(root, "skills");
+  const connectSkills = readdirSync(skillsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== "webex-api-knowledge");
+  assert.equal(connectSkills.length, 19);
+  for (const entry of connectSkills) {
+    const directory = join(skillsRoot, entry.name);
+    const pkg = JSON.parse(readFileSync(join(directory, "package.json"), "utf8"));
+    const readme = readFileSync(join(directory, "README.md"), "utf8");
+    const archive = join(directory, "release", `${pkg.name}-latest.tgz`);
+    assert.equal(pkg.private, true, `${pkg.name} must not publish to npm`);
+    assert.ok(readme.includes(`https://raw.githubusercontent.com/webex/webex-skills/main/skills/${pkg.name}/release/${pkg.name}-latest.tgz`), `${pkg.name} README must install from its repository release package`);
+    assert.ok(readme.includes("npx --yes"), `${pkg.name} README must use noninteractive npm execution`);
+    assert.ok(existsSync(archive), `${pkg.name} latest release archive is missing`);
+  }
+});
+
 test("source plugin contains no skills and build assembles all linked skills", () => {
   const root = new URL("../", import.meta.url).pathname;
   const source = join(root, "plugins", "webex-connect-ai");
@@ -102,10 +132,15 @@ test("source plugin contains no skills and build assembles all linked skills", (
   assert.ok(!readdirSync(source, { recursive: true }).some((path) => path.endsWith("SKILL.md")));
 
   execFileSync(process.execPath, [join(root, "scripts", "build-plugins.mjs")], { cwd: root, stdio: "pipe" });
-  const built = join(root, "dist", "plugins", "webex-connect-ai");
+  const built = join(root, "plugin-packages", "webex-connect-ai");
   const skillFiles = readdirSync(join(built, "skills"), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => join(built, "skills", entry.name, "SKILL.md"));
   assert.equal(skillFiles.length, 19);
   assert.ok(skillFiles.every((path) => existsSync(path)));
+  const lock = JSON.parse(readFileSync(join(built, "plugin-lock.json"), "utf8"));
+  assert.equal(lock.version, recipe.version);
+  assert.equal(Object.keys(lock.skills).length, 19);
+  assert.ok(Object.values(lock.skills).every((version) => /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)));
+  assert.ok(!readdirSync(built).includes("release"));
 });

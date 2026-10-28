@@ -8,8 +8,10 @@ tests, and releases with their owning skill package.
 The checked-in plugin source contains manifests, plugin-specific commands,
 rules, and branding. It intentionally contains no skill implementations. The
 build step resolves the skill names in `plugin.json`, copies their distributable
-skill directories into `dist/plugins/webex-connect-ai/skills/`, and produces a
-self-contained plugin folder for supported hosts.
+skill directories into `plugin-packages/webex-connect-ai/skills/`, and produces
+a self-contained plugin folder for supported hosts. The generated package is
+committed so repository marketplace installs work from GitHub clones. Its
+`plugin-lock.json` records the exact versions of the linked skill packages.
 
 ## Build and install locally
 
@@ -21,8 +23,10 @@ codex plugin marketplace add .
 codex plugin add webex-connect-ai@webex-skills
 ```
 
-The marketplace points to the generated plugin under `dist/`; rebuild after
-changing a linked skill or plugin component. Build output is ignored by Git.
+The marketplace points to the generated plugin under `plugin-packages/`. After
+changing a linked skill or plugin component, bump the plugin version and rebuild
+the package before committing. CI checks that the committed bundle matches the
+source.
 
 ## Included skills
 

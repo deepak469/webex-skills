@@ -1,0 +1,25 @@
+{
+  "name": "webex-connect-ai",
+  "version": "0.1.0-beta.1",
+  "skills": {
+    "webex-connect-setup": "0.1.0-beta.1",
+    "webexconnect-android-push-inapp-messaging-builder": "0.1.0-beta.1",
+    "webexconnect-apple-messages-for-business-sendmessage": "0.1.0-beta.1",
+    "webexconnect-contact-policy": "0.1.0-beta.1",
+    "webexconnect-digital-asset-creation": "0.1.0-beta.1",
+    "webexconnect-email-sendmessage": "0.1.0-beta.1",
+    "webexconnect-facebook-messenger-sendmessage": "0.1.0-beta.1",
+    "webexconnect-ios-push-inapp-messaging-builder": "0.1.0-beta.1",
+    "webexconnect-livechat-inapp-sendmessage": "0.1.0-beta.1",
+    "webexconnect-livechat-widget": "0.1.0-beta.1",
+    "webexconnect-mms-sendmessage": "0.1.0-beta.1",
+    "webexconnect-push-sendmessage": "0.1.0-beta.1",
+    "webexconnect-rcs-sendmessage": "0.1.0-beta.1",
+    "webexconnect-sandbox": "0.1.0-beta.1",
+    "webexconnect-sendmessage": "0.1.0-beta.1",
+    "webexconnect-sms-sendmessage": "0.1.0-beta.1",
+    "webexconnect-voice-sendmessage": "0.1.0-beta.1",
+    "webexconnect-webhooks-events": "0.1.0-beta.1",
+    "webexconnect-whatsapp-sendmessage": "0.1.0-beta.1"
+  }
+}

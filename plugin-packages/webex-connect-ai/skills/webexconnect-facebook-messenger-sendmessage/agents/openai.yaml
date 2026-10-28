@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Messenger"
+  short_description: "Messenger PSIDs, tags, quick replies"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-facebook-messenger-sendmessage to build a Webex Connect Facebook Messenger payload."

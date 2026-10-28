@@ -1,7 +1,7 @@
 {
   "name": "webex-connect-ai",
   "displayName": "Webex Connect AI",
-  "version": "0.3.0-beta.1",
+  "version": "0.1.0-beta.1",
   "description": "Webex Connect skills, rules, and commands for digital-asset lifecycle operations, digital-channel messaging, live chat widgets, Android and iOS push plus in-app messaging demos, setup workflows, and API integrations.",
   "author": {
     "name": "Cisco SQBU",

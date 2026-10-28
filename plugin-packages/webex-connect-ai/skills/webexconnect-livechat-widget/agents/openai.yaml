@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Live Chat Widget"
+  short_description: "JavaScript SDK live chat builder"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-livechat-widget to build a browser live chat widget with the Webex Connect JavaScript SDK. Before scaffolding, collect the widget target/framework, Connect config, visitor identity strategy, browser-push choice, deployment paths, SDK source, and install/verification preference."

@@ -1,0 +1,34 @@
+{
+  "name": "webex-connect-ai",
+  "displayName": "Webex Connect AI",
+  "version": "0.1.0-beta.1",
+  "description": "Webex Connect skills, rules, and commands for digital-asset lifecycle operations, digital-channel messaging, live chat widgets, Android and iOS push plus in-app messaging demos, setup workflows, and API integrations.",
+  "author": {
+    "name": "Cisco SQBU",
+    "url": "https://developers.webexconnect.io"
+  },
+  "homepage": "https://developers.webexconnect.io/reference/apioverview",
+  "license": "UNLICENSED",
+  "keywords": [
+    "webex-connect",
+    "sms",
+    "mms",
+    "rcs",
+    "whatsapp",
+    "email",
+    "digital-assets",
+    "push",
+    "live-chat",
+    "in-app",
+    "android",
+    "ios",
+    "swift",
+    "spm",
+    "messaging",
+    "api"
+  ],
+  "skills": "./skills/",
+  "rules": "./rules/",
+  "commands": "./commands/",
+  "logo": "./assets/webex-icon-400.png"
+}

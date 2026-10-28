@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Setup"
+  short_description: "Configure tenant, endpoints, credentials, and MCP"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webex-connect-setup to configure Webex Connect Sandbox or Production access and create or update the project .env for the APIs I need."

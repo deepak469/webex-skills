@@ -28,7 +28,7 @@ scripts/                    shared repo tooling (validate, detect changes, chang
 .claude-plugin/             local Claude Code plugin marketplace
 .cursor-plugin/             local Cursor plugin marketplace
 plugins/webex-connect-ai/   plugin recipe, host manifests, commands, and assets
-dist/plugins/<name>/         generated, self-contained plugin package (ignored)
+plugin-packages/<name>/       generated, self-contained plugin package used by marketplaces
 .github/workflows/          CI verification and release packaging
 ```
 
@@ -38,9 +38,11 @@ The 19 Webex Connect skills are individual packages under `skills/`. The
 `webex-connect-ai` plugin recipe selects them by package name in
 `plugins/webex-connect-ai/plugin.json`. `npm run plugin:build` assembles the
 selected skills with plugin-specific commands, rules, manifests, and branding
-into a self-contained folder under ignored `dist/plugins/`. The generated
-[plugin catalog](PLUGINS.md) lists the plugin and its skill links. Codex
-discovers the built package through `.agents/plugins/marketplace.json`.
+into the committed `plugin-packages/` directory. Marketplace catalogs point to
+that self-contained package, so installs from a GitHub clone work without a
+local build step. CI rebuilds it and checks that the committed package matches
+the source recipe and skills. The package lock records linked skill versions.
+The generated [plugin catalog](PLUGINS.md) lists the plugin and its skill links.
 
 ## Development
 
@@ -58,7 +60,8 @@ npm run catalog:generate                          # refresh PLUGINS.md and catal
 See [CONTRIBUTING.md](CONTRIBUTING.md) for adding plugins and keeping their
 manifests, marketplaces, and catalog in sync.
 
-After building, install the local Codex plugin from this repository with:
+To refresh the committed package after changing a plugin or linked skill, run
+`npm run plugin:build`, then install the Codex plugin from this repository with:
 
 ```sh
 codex plugin marketplace add .
@@ -82,6 +85,22 @@ Versions are `X.Y.Z` (stable) or `X.Y.Z-beta.N` (pre-release). Stable releases r
 **Pre-release**: bump `version` to `X.Y.Z-beta.N`, merge, and run **Package skill release**.
 
 The workflow validates, tests, packs `skills/<name>/release/<name>-<version>.tgz` and `<name>-latest.tgz`, and commits them to the default branch. Stable releases are also tagged `<name>@<version>`; these tags mark where the next changelog starts. Existing versions are never overwritten. The changelog is not shipped inside the package.
+
+## Releasing a plugin
+
+A plugin version identifies the complete bundle: plugin metadata, commands,
+rules, assets, and the checked-in source of every linked skill at the release
+commit. Bump the plugin version whenever bundled content or a linked skill's
+package version changes. The generated `plugin-lock.json` records selected
+skill versions, and CI requires a version bump when bundled inputs change.
+
+For a release, update `plugins/<name>/release/CHANGELOG.md` for stable
+versions, update the plugin version consistently in its manifests and
+marketplace catalogs, run `npm run plugin:build`, and commit the generated
+`plugin-packages/<name>/` directory. Then run **Actions > Package plugin
+release** on the default branch. It archives the committed bundle as
+`plugins/<name>/release/<name>-<version>.tgz` and `<name>-latest.tgz`, and tags
+the release as `<name>@<version>`. Released version archives are immutable.
 
 ## Adding a skill
 

@@ -6,9 +6,9 @@
   "plugins": [
     {
       "name": "webex-connect-ai",
-      "source": "./dist/plugins/webex-connect-ai",
+      "source": "./plugin-packages/webex-connect-ai",
       "description": "Webex Connect AI skills for digital-asset lifecycle operations, digital channels, live chat widgets, and Android plus iOS push and in-app messaging demos.",
-      "version": "0.3.0-beta.1",
+      "version": "0.1.0-beta.1",
       "author": {
         "name": "Cisco SQBU"
       },

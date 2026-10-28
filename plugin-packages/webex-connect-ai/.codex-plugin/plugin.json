@@ -1,0 +1,53 @@
+{
+  "name": "webex-connect-ai",
+  "version": "0.1.0-beta.1",
+  "description": "Webex Connect AI skills for digital-asset lifecycle operations, digital-channel messaging, live chat widgets, Android and iOS push plus in-app messaging demos, setup workflows, and production-ready API integrations.",
+  "author": {
+    "name": "Cisco SQBU",
+    "url": "https://developers.webexconnect.io"
+  },
+  "homepage": "https://developers.webexconnect.io/reference/apioverview",
+  "license": "UNLICENSED",
+  "keywords": [
+    "webex-connect",
+    "sms",
+    "mms",
+    "rcs",
+    "whatsapp",
+    "email",
+    "digital-assets",
+    "push",
+    "live-chat",
+    "in-app",
+    "android",
+    "ios",
+    "swift",
+    "spm",
+    "messaging",
+    "api"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Webex Connect AI",
+    "shortDescription": "Skills for Webex Connect messaging and app demos",
+    "longDescription": "Production-oriented Agent Skills for Webex Connect digital-asset creation, digital channels, tenant setup, Send Message API payloads, webhook handling, browser live chat widgets, and Android plus iOS push and in-app messaging demo builders. The plugin packages the skills with metadata so agents can load only the workflow needed for the user's task.",
+    "developerName": "Cisco SQBU",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://developers.webexconnect.io",
+    "defaultPrompt": [
+      "Build a Webex Connect SMS send-message payload",
+      "Create a Webex Connect live chat widget",
+      "Generate an Android push and in-app demo",
+      "Generate an iOS push and in-app demo",
+      "Create, retrieve, or update a Webex Connect Chat, Email, Messenger, or WhatsApp digital asset",
+      "Configure Webex Connect direct API and SMS/Email MCP access"
+    ],
+    "brandColor": "#316AFF",
+    "logo": "./assets/webex.svg",
+    "composerIcon": "./assets/webex-icon-400.png"
+  }
+}

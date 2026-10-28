@@ -25,25 +25,44 @@ plugin bundles assembled from those skills.
    `.claude-plugin/marketplace.json` (Claude Code),
    `.cursor-plugin/marketplace.json` (Cursor), and
    `.windsurf-plugin/marketplace.json` (Windsurf). Their entries point at the
-   generated `./dist/plugins/<plugin-name>` package.
+   generated `./plugin-packages/<plugin-name>` package. The recipe under
+   `plugins/` stays skill-free; the generated distribution package is committed
+   separately so marketplace installs work from a GitHub clone.
 3. Keep versions synchronized in the plugin recipe, surface manifests, and
-   marketplace entries. Marketplace catalogs share the repository identity
-   `webex-skills`.
-4. Build output is generated and ignored by Git. `npm run plugin:build`
-   resolves the recipe's skill names and assembles a self-contained plugin in
-   `dist/plugins/` for installation or release.
-5. Regenerate indexes and run all checks:
+   marketplace entries. A plugin version identifies its complete bundle at a
+   source commit. Bump it whenever plugin files or linked skill content/package
+   versions change. `plugin-lock.json` records linked skill package versions,
+   and CI checks both the lock and generated package.
+4. Build output is generated and committed. `npm run plugin:build` resolves the
+   recipe's skill names and assembles a self-contained package in
+   `plugin-packages/`. CI rebuilds it and fails if the committed package is
+   stale.
+5. Regenerate indexes, rebuild packages, and run all checks:
 
    ```sh
    npm run catalog:generate
-   npm run validate
    npm run plugin:build
+   npm run validate
    node --test tests/plugins.test.mjs
    npm test
    ```
 
 Do not edit `PLUGINS.md` or `catalog.json` by hand. The generator reads plugin
 recipes and the linked skill package metadata.
+
+## Release a plugin
+
+1. Update the plugin version in `plugins/<plugin-name>/plugin.json`, all
+   supported surface manifests, and marketplace entries. Add a changelog entry
+   for stable versions in `plugins/<plugin-name>/release/CHANGELOG.md`.
+2. Rebuild and commit `plugin-packages/<plugin-name>/` so the marketplace
+   package matches its source.
+3. On the default branch, run **Actions > Package plugin release**. The
+   workflow creates immutable versioned and `latest` archives in the plugin's
+   `release/` directory and tags the release `<plugin-name>@<version>`.
+
+The plugin bundle contains the linked skill source from the release commit; it
+does not resolve mutable skill content during installation.
 
 ## Change an existing plugin
 

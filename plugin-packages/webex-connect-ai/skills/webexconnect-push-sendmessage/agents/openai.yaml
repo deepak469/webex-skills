@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Push"
+  short_description: "Push notifications for app users"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-push-sendmessage to build a Webex Connect Push Messaging API v1 notification."

@@ -1,7 +1,7 @@
 {
   "name": "webex-connect-ai",
   "displayName": "Webex Connect AI",
-  "version": "0.3.0-beta.1",
+  "version": "0.1.0-beta.1",
   "description": "Webex Connect skills for tenant setup, digital-channel messaging, asset management, webhooks, and SDK app development.",
   "skills": [
     "webex-connect-setup",

@@ -10,7 +10,8 @@
     "catalog:generate": "node scripts/generate-catalog.mjs",
     "test": "npm test --workspaces --if-present",
     "package": "node scripts/package-skill.mjs",
-    "plugin:build": "node scripts/build-plugins.mjs"
+    "plugin:build": "node scripts/build-plugins.mjs",
+    "plugin:package": "node scripts/package-plugin.mjs"
   },
   "engines": {
     "node": ">=20"

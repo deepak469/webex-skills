@@ -1,0 +1,82 @@
+name: Package plugin release
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: Plugin to package (version is read from plugins/<plugin>/plugin.json)
+        required: true
+        type: string
+      dry-run:
+        description: Validate and package without committing the release archive
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: package-plugin-release
+  cancel-in-progress: false
+
+jobs:
+  package:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    env:
+      PLUGIN: ${{ inputs.plugin }}
+      DRY_RUN: ${{ inputs.dry-run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - run: node scripts/validate-plugin.mjs
+      - run: node scripts/build-plugins.mjs "$PLUGIN"
+      - name: Check committed plugin bundle
+        run: |
+          if [[ -n "$(git status --porcelain --untracked-files=all -- plugin-packages/"$PLUGIN")" ]]; then
+            git status --short -- "plugin-packages/$PLUGIN"
+            echo "The committed plugin bundle is stale. Update it in a pull request before releasing."
+            exit 1
+          fi
+      - name: Build release archive
+        run: |
+          flags=()
+          [[ "$DRY_RUN" == "true" ]] && flags+=(--dry-run)
+          node scripts/package-plugin.mjs "$PLUGIN" "${flags[@]}" | tee result.json
+          echo "version=$(node -p "require('./result.json').version")" >> "$GITHUB_OUTPUT"
+          echo "file=$(node -p "require('./result.json').file")" >> "$GITHUB_OUTPUT"
+          echo "latest=$(node -p "require('./result.json').latest")" >> "$GITHUB_OUTPUT"
+        id: pack
+      - name: Commit package and tag
+        if: ${{ inputs.dry-run != true }}
+        env:
+          VERSION: ${{ steps.pack.outputs.version }}
+          FILE: ${{ steps.pack.outputs.file }}
+          LATEST: ${{ steps.pack.outputs.latest }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add "$FILE" "$LATEST"
+          git commit -m "release($PLUGIN): $VERSION"
+          git tag -a "$PLUGIN@$VERSION" -m "$PLUGIN $VERSION"
+          git push --follow-tags
+      - name: Summarize
+        env:
+          VERSION: ${{ steps.pack.outputs.version }}
+          FILE: ${{ steps.pack.outputs.file }}
+        run: |
+          {
+            echo "## Plugin package"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Plugin | \`$PLUGIN\` |"
+            echo "| Version | \`$VERSION\` |"
+            echo "| Package | \`$FILE\` |"
+            echo "| Dry run | \`$DRY_RUN\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

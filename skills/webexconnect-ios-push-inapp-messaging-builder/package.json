@@ -22,5 +22,6 @@
     "agent-skill",
     "webex-connect"
   ],
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "private": true
 }

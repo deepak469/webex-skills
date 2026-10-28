@@ -2,7 +2,7 @@
 
 Available plugin bundles and their linked standalone skills. Generated from plugin manifests and skill package metadata; edit the source files and run `npm run catalog:generate`.
 
-## Webex Connect AI (0.3.0-beta.1)
+## Webex Connect AI (0.1.0-beta.1)
 
 Webex Connect skills for tenant setup, digital-channel messaging, asset management, webhooks, and SDK app development.
 

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Webex Connect Android Push and InApp Messaging Builder"
+  short_description: "Build Android push and in-app messaging"
+  icon_small: "./assets/webex-icon-400.png"
+  icon_large: "./assets/webex.svg"
+  brand_color: "#316AFF"
+  default_prompt: "Use $webexconnect-android-push-inapp-messaging-builder to build a rich Android Push and In-App Messaging app with Webex Connect."
